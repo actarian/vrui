@@ -218,11 +218,9 @@ export class VR extends Emittable {
 			if (device.isPresenting) {
 				device.exitPresent();
 			} else {
-				console.log(this.renderer.domElement);
 				device.requestPresent([{
 					source: this.renderer.domElement
 				}]).then(() => {
-					console.log('presenting');
 					this.emit('presenting');
 				}, (error) => {
 					console.log(error);

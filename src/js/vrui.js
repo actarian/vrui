@@ -4,6 +4,7 @@
 // import * as THREE from 'three';
 // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+import { TEST_ENABLED } from './const';
 import InteractiveMesh from './interactive/interactive.mesh';
 import Controllers from './vr/controllers';
 import { VR, VR_MODE } from './vr/vr';
@@ -30,22 +31,7 @@ class vrui {
 		camera.position.set(0, 0, 10);
 		camera.target = new THREE.Vector3();
 
-		const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-		const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-		const cube = this.cube = new InteractiveMesh(geometry, material);
-		cube.position.set(0, 0, -5);
-		cube.on('over', () => {
-			cube.material.color.setHex(0xff0000);
-		});
-		cube.on('out', () => {
-			cube.material.color.setHex(0x00ff00);
-		});
-		cube.on('down', () => {
-			cube.material.color.setHex(0xffffff);
-		});
-		cube.on('up', () => {
-			cube.material.color.setHex(0x0000ff);
-		});
+		const cube = this.cube = this.addCube();
 		scene.add(cube);
 
 		const light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
@@ -53,7 +39,9 @@ class vrui {
 
 		const raycaster = this.raycaster = new THREE.Raycaster();
 
-		const renderer = this.renderer = new THREE.WebGLRenderer();
+		const renderer = this.renderer = new THREE.WebGLRenderer({
+			antialias: true,
+		});
 		renderer.setClearColor(0x666666, 1);
 		renderer.setPixelRatio(window.devicePixelRatio);
 		renderer.setSize(window.innerWidth, window.innerHeight);
@@ -67,7 +55,7 @@ class vrui {
 		const pivot = new THREE.Group();
 		scene.add(pivot);
 
-		if (this.vr.mode !== VR_MODE.NONE) {
+		if (this.vr.mode !== VR_MODE.NONE || TEST_ENABLED) {
 			const controllers = this.controllers = new Controllers(renderer, scene, pivot);
 		}
 
@@ -76,23 +64,42 @@ class vrui {
 		window.addEventListener('resize', this.onWindowResize, false);
 	}
 
+	addCube() {
+		const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+		const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+		const cube = this.cube = new InteractiveMesh(geometry, material);
+		cube.position.set(0, 3, -5);
+		cube.on('over', () => {
+			cube.material.color.setHex(0xff0000);
+		});
+		cube.on('out', () => {
+			cube.material.color.setHex(0x00ff00);
+		});
+		cube.on('down', () => {
+			cube.material.color.setHex(0xffffff);
+		});
+		cube.on('up', () => {
+			cube.material.color.setHex(0x0000ff);
+		});
+		return cube;
+	}
+
 	updateRaycaster() {
 		try {
 			const controllers = this.controllers;
-			if (controllers) {
-				const controller = controllers.controller;
-				if (controller) {
-					const raycaster = this.raycaster;
-					const position = controller.position;
-					const rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
-					raycaster.set(position, rotation);
-					const hit = InteractiveMesh.hittest(raycaster, controllers.gamepads.button);
+			const raycaster = controllers.setRaycaster(this.raycaster);
+			if (raycaster) {
+				const hit = InteractiveMesh.hittest(raycaster, controllers.gamepads.button);
+				if (hit && hit !== this.pivot.room.sphere) {
+					controllers.feedback();
 					/*
-					if (hit) {
-						controllers.hapticFeedback();
+					if (Tone.context.state === 'running') {
+						const feedback = this.feedback = (this.feedback || new Tone.Player('audio/feedback.mp3').toMaster());
+						feedback.start();
 					}
 					*/
 				}
+				// this.updatePointer(raycaster);
 			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
@@ -107,8 +114,8 @@ class vrui {
 			this.cube.scale.set(s, s, s);
 			if (this.controllers) {
 				this.controllers.update();
+				this.updateRaycaster();
 			}
-			this.updateRaycaster();
 			const renderer = this.renderer;
 			renderer.render(this.scene, this.camera);
 			this.i++;

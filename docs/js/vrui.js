@@ -6,13 +6,14 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.cm = cm;
 exports.mm = mm;
+exports.deg = deg;
 exports.addCube = addCube;
 exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TEST_ENABLED = void 0;
 
 /* jshint esversion: 6 */
 
 /* global window, document */
-var TEST_ENABLED = false;
+var TEST_ENABLED = true;
 exports.TEST_ENABLED = TEST_ENABLED;
 var ROOM_RADIUS = 200;
 exports.ROOM_RADIUS = ROOM_RADIUS;
@@ -31,6 +32,10 @@ function cm(value) {
 
 function mm(value) {
   return value / 1000;
+}
+
+function deg(value) {
+  return Math.PI / 180 * value;
 }
 
 function addCube(parent) {
@@ -442,9 +447,373 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
+var _const = require("../../const");
+
+var _gamepads = require("../gamepads");
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var Controller =
+/*#__PURE__*/
+function (_THREE$Group) {
+  _inherits(Controller, _THREE$Group);
+
+  _createClass(Controller, [{
+    key: "active",
+    get: function get() {
+      return this.active_;
+    },
+    set: function set(active) {
+      if (this.active_ !== active) {
+        this.active_ = active;
+
+        if (active) {
+          this.add(this.ray);
+        } else {
+          this.remove(this.ray);
+        }
+      }
+    }
+  }]);
+
+  function Controller(parent, hand) {
+    var _this;
+
+    _classCallCheck(this, Controller);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(Controller).call(this));
+    _this.ready = false;
+    _this.buttons = [];
+    _this.tween = {
+      value: 0
+    };
+    _this.parent = parent;
+    _this.hand = hand;
+
+    var model = _this.model = _this.addModel(hand);
+
+    var ray = _this.ray = _this.addRay(hand);
+
+    _this.add(model);
+
+    parent.add(_assertThisInitialized(_this));
+    return _this;
+  }
+
+  _createClass(Controller, [{
+    key: "addModel",
+    value: function addModel(hand) {
+      var geometry = new THREE.CylinderBufferGeometry((0, _const.cm)(2), (0, _const.cm)(2), (0, _const.cm)(12), 24);
+      geometry.rotateX(Math.PI / 2);
+      var texture = new THREE.TextureLoader().load('img/matcap.jpg');
+      var material = new THREE.MeshMatcapMaterial({
+        color: this.hand === _gamepads.GAMEPAD_HANDS.RIGHT ? 0x991111 : 0x111199,
+        matcap: texture // transparent: true,
+        // opacity: 1,
+
+      });
+      var mesh = new THREE.Mesh(geometry, material);
+      this.ready = true;
+      return mesh;
+    }
+  }, {
+    key: "addRay",
+    value: function addRay(hand) {
+      var geometry = new THREE.CylinderBufferGeometry((0, _const.mm)(2), (0, _const.mm)(1), (0, _const.cm)(30), 5); // 10, 12
+
+      geometry.rotateX(Math.PI / 2);
+      var material = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.5
+      });
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(0, 0, -(0, _const.cm)(18.5));
+      return mesh;
+    }
+  }, {
+    key: "update",
+    value: function update(tick) {}
+  }, {
+    key: "press",
+    value: function press(index) {
+      var _this2 = this;
+
+      TweenMax.to(this.tween, 0.4, {
+        value: 1,
+        ease: Power2.easeOut,
+        onUpdate: function onUpdate() {
+          if (typeof _this2.buttons[index] === 'function') {
+            _this2.buttons[index](_this2.tween.value);
+          }
+        }
+      });
+    }
+  }, {
+    key: "release",
+    value: function release(index) {
+      var _this3 = this;
+
+      TweenMax.to(this.tween, 0.4, {
+        value: 0,
+        ease: Power2.easeOut,
+        onUpdate: function onUpdate() {
+          if (typeof _this3.buttons[index] === 'function') {
+            _this3.buttons[index](_this3.tween.value);
+          }
+        }
+      });
+    }
+  }, {
+    key: "move",
+    value: function move(axis) {}
+  }], [{
+    key: "getCos",
+    value: function getCos(tick) {
+      var i = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+      return Math.cos(i + tick * 0.1);
+    }
+  }, {
+    key: "mixColor",
+    value: function mixColor(color, a, b, value) {
+      return color.setRGB(a.r + (b.r - a.r) * value, a.g + (b.g - a.g) * value, a.b + (b.b - a.b) * value);
+    }
+  }]);
+
+  return Controller;
+}(THREE.Group);
+
+exports.default = Controller;
+
+},{"../../const":1,"../gamepads":9}],7:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _const = require("../../const");
+
+var _gamepads = require("../gamepads");
+
+var _controller = _interopRequireDefault(require("./controller"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var OFF = new THREE.Color(0x666666);
+var ON = new THREE.Color(0xffffff);
+
+var OculusQuestController =
+/*#__PURE__*/
+function (_Controller) {
+  _inherits(OculusQuestController, _Controller);
+
+  function OculusQuestController(parent, hand) {
+    _classCallCheck(this, OculusQuestController);
+
+    return _possibleConstructorReturn(this, _getPrototypeOf(OculusQuestController).call(this, parent, hand));
+  }
+
+  _createClass(OculusQuestController, [{
+    key: "addModel",
+    value: function addModel(hand) {
+      var _this = this;
+
+      var format = '.fbx'; // '.obj';
+
+      var path = "".concat(OculusQuestController.FOLDER, "/").concat(hand, "/").concat(hand);
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap.jpg');
+      var texture = new THREE.TextureLoader().load("".concat(path, ".jpg"));
+      var material = new THREE.MeshMatcapMaterial({
+        color: ON,
+        // hand === GAMEPAD_HANDS.RIGHT ? 0xffeeee : 0xeeeeff, // 0x991111 : 0x111199,
+        map: texture,
+        matcap: matcap,
+        transparent: true,
+        opacity: 1
+      });
+      var mesh = new THREE.Group();
+      var loader = format === '.fbx' ? new THREE.FBXLoader() : new THREE.OBJLoader();
+      var i = 0;
+      loader.load("".concat(path).concat(format), function (object) {
+        /*
+        const mixer = new THREE.AnimationMixer(object);
+        const action = mixer.clipAction(object.animations[0]);
+        action.play();
+        */
+        object.traverse(function (child) {
+          if (child instanceof THREE.Mesh) {
+            child.material = material.clone();
+            child.geometry.rotateX(child.rotation.x);
+            child.geometry.rotateY(child.rotation.y);
+            child.geometry.rotateZ(child.rotation.z);
+            child.rotation.set(0, 0, 0);
+            var position = child.position.clone(); // left > 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
+            // right > 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
+
+            switch (child.name) {
+              case 'joystick':
+                _this.buttons[0] = function (value) {
+                  child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
+
+                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                };
+
+                _this.move = function (axis) {
+                  child.rotation.set(axis.y * (0, _const.deg)(15), 0, axis.x * (0, _const.deg)(15));
+                };
+
+                break;
+
+              case 'trigger':
+                _this.buttons[1] = function (value) {
+                  child.rotation.set(-value * (0, _const.deg)(20), 0, 0);
+
+                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                };
+
+                break;
+
+              case 'grip':
+                var direction = hand === _gamepads.GAMEPAD_HANDS.RIGHT ? 1 : -1;
+
+                _this.buttons[2] = function (value) {
+                  child.position.set(position.x + value * (0, _const.mm)(2) * direction, position.y, position.z);
+
+                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                };
+
+                break;
+
+              case 'buttonY':
+              case 'buttonA':
+                _this.buttons[3] = function (value) {
+                  child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
+
+                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                };
+
+                break;
+
+              case 'buttonX':
+              case 'buttonB':
+                _this.buttons[4] = function (value) {
+                  child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
+
+                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                };
+
+                break;
+
+              default:
+            }
+
+            i++;
+          }
+        });
+        mesh.add(object);
+        _this.ready = true;
+      }, function (xhr) {
+        _this.progress = xhr.loaded / xhr.total;
+      }, function (error) {
+        console.log("OculusQuestController.addModel not found ".concat(path, ".obj"));
+      });
+      return mesh;
+    }
+  }, {
+    key: "addRay",
+    value: function addRay(hand) {
+      var geometry = new THREE.CylinderBufferGeometry((0, _const.mm)(1), (0, _const.mm)(0.5), (0, _const.cm)(30), 5); // 10, 12
+
+      geometry.rotateX(Math.PI / 2);
+      var material = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.5
+      });
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(this.hand === _gamepads.GAMEPAD_HANDS.RIGHT ? (0, _const.cm)(1) : -(0, _const.cm)(1), 0, -(0, _const.cm)(18.5));
+      return mesh;
+    }
+  }, {
+    key: "update",
+    value: function update(tick) {
+      this.test(tick);
+    }
+  }, {
+    key: "test",
+    value: function test(tick) {
+      if (_const.TEST_ENABLED && this.ready) {
+        var x = _controller.default.getCos(tick, 0);
+
+        var y = _controller.default.getCos(tick, 1);
+
+        this.move({
+          x: x,
+          y: y
+        });
+        this.buttons[1](Math.abs(_controller.default.getCos(tick, 1)));
+        this.buttons[2](Math.abs(_controller.default.getCos(tick, 2)));
+        this.buttons[3](Math.abs(_controller.default.getCos(tick, 3)));
+        this.buttons[4](Math.abs(_controller.default.getCos(tick, 4)));
+      }
+    }
+  }]);
+
+  return OculusQuestController;
+}(_controller.default);
+
+exports.default = OculusQuestController;
+OculusQuestController.FOLDER = "models/oculus-quest";
+
+},{"../../const":1,"../gamepads":9,"./controller":6}],8:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
 var _const = require("../const");
 
 var _emittable = _interopRequireDefault(require("../interactive/emittable"));
+
+var _oculusQuestController = _interopRequireDefault(require("./controller/oculus-quest-controller"));
 
 var _gamepads = _interopRequireWildcard(require("./gamepads"));
 
@@ -481,200 +850,212 @@ function (_Emittable) {
     _classCallCheck(this, Controllers);
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Controllers).call(this));
+    _this.tick = 0;
     _this.controllers_ = {};
     _this.gamepads_ = {};
     _this.renderer = renderer;
     _this.scene = scene;
     _this.pivot = pivot;
-    _this.controllerDirection = new THREE.Vector3();
+    _this.direction = new THREE.Vector3();
 
-    var text = _this.text = _this.addText(pivot);
+    var text = _this.text = _this.addText_(pivot);
 
-    var gamepads = _this.gamepads = _this.addGamepads();
+    var gamepads = _this.gamepads = _this.addGamepads_();
+
+    _this.addTestController_();
 
     return _this;
   }
 
   _createClass(Controllers, [{
-    key: "addGamepads",
-    value: function addGamepads() {
-      var _this2 = this;
+    key: "feedback",
+    value: function feedback() {
+      var gamepad = this.gamepad;
 
-      var gamepads = this.gamepads = new _gamepads.default(function (text) {
-        _this2.setText(text);
-      });
-      gamepads.on('connect', function (gamepad) {
-        // console.log('connect', gamepad);
-        _this2.setText("connect ".concat(gamepad.hand, " ").concat(gamepad.index));
-
-        var controller = _this2.addController(_this2.renderer, _this2.scene, gamepad);
-
-        if (gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-          _this2.left = controller;
-        } else {
-          _this2.right = controller;
-        }
-      });
-      gamepads.on('disconnect', function (gamepad) {
-        // console.log('disconnect', gamepad);
-        _this2.setText("disconnect ".concat(gamepad.hand, " ").concat(gamepad.index));
-
-        _this2.removeController(gamepad);
-      });
-      gamepads.on('hand', function (gamepad) {
-        _this2.setController(gamepad);
-      });
-      gamepads.on('press', function (button) {
-        // console.log('press', press);
-        _this2.setText("press ".concat(button.gamepad.hand, " ").concat(button.index));
-
-        switch (button.gamepad.hand) {
-          case _gamepads.GAMEPAD_HANDS.LEFT:
-            // 0 trigger, 1 front, 2 side, 3 Y, 4 X
-            switch (button.index) {
-              case 1:
-                break;
-
-              case 2:
-                break;
-
-              case 3:
-                break;
-            }
-
-            break;
-
-          case _gamepads.GAMEPAD_HANDS.RIGHT:
-            // 0 trigger, 1 front, 2 side, 3 A, 4 B
-            break;
-        }
-      });
-      gamepads.on('release', function (button) {// console.log('release', button);
-        // this.setText(`release ${button.gamepad.hand} ${button.index}`);
-      });
-      gamepads.on('axis', function (axis) {
-        // console.log('axis', axis);
-        _this2.setText("axis ".concat(axis.gamepad.hand, " ").concat(axis.index, " { x:").concat(axis.x, ", y:").concat(axis.y, " }")); // axisup, axisdown, axisleft, axisright
-        // this.menu.next();
-
-      });
-      return gamepads;
-    }
-  }, {
-    key: "setController",
-    value: function setController(gamepad) {
-      var controller = gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT ? this.left : this.right;
-      var currentController = this.controller;
-
-      if (currentController !== controller) {
-        if (currentController) {
-          currentController.remove(currentController.indicator);
-        }
-
-        controller.add(controller.indicator);
-        this.controller = controller;
+      if (gamepad) {
+        gamepad.feedback();
       }
     }
   }, {
     key: "update",
     value: function update() {
-      this.gamepads.update();
+      var _this2 = this;
+
+      this.gamepads.update(this.tick);
+      Object.keys(this.controllers_).forEach(function (x) {
+        return _this2.controllers_[x].update(_this2.tick);
+      });
+      this.tick++;
     }
   }, {
-    key: "addController",
-    value: function addController(renderer, scene, gamepad) {
-      var controller = renderer.vr.getController(gamepad.index);
+    key: "setRaycaster",
+    value: function setRaycaster(raycaster) {
+      var controller = this.controller;
 
       if (controller) {
-        controller.index = gamepad.index;
-        var cylinder = controller.cylinder = this.addControllerModel(controller, gamepad.hand);
-        scene.add(controller);
-        this.controllers_[gamepad.index] = controller;
+        var pivot = controller.parent;
+        var position = pivot.position;
+        var rotation = pivot.getWorldDirection(this.direction).multiplyScalar(-1);
+        raycaster.set(position, rotation);
+        return raycaster;
+      }
+    }
+  }, {
+    key: "addGamepads_",
+    value: function addGamepads_() {
+      var _this3 = this;
+
+      var gamepads = this.gamepads = new _gamepads.default(function (text) {
+        _this3.setText(text);
+      });
+      gamepads.on('connect', function (gamepad) {
+        // console.log('connect', gamepad);
+        _this3.setText("connect ".concat(gamepad.hand, " ").concat(gamepad.index));
+
+        var controller = _this3.addController_(_this3.renderer, _this3.scene, gamepad);
+
+        if (gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+          _this3.left = controller;
+        } else {
+          _this3.right = controller;
+        }
+      });
+      gamepads.on('disconnect', function (gamepad) {
+        // console.log('disconnect', gamepad);
+        _this3.setText("disconnect ".concat(gamepad.hand, " ").concat(gamepad.index));
+
+        _this3.removeController_(gamepad);
+      });
+      gamepads.on('hand', function (gamepad) {
+        _this3.gamepad = gamepad;
+      });
+      gamepads.on('press', function (button) {
+        // console.log('press', press);
+        _this3.setText("press ".concat(button.gamepad.hand, " ").concat(button.index));
+
+        switch (button.gamepad.hand) {
+          case _gamepads.GAMEPAD_HANDS.LEFT:
+            // 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
+
+            /*
+            switch (button.index) {
+            	case 1:
+            		break;
+            	case 2:
+            		break;
+            	case 3:
+            		break;
+            }
+            */
+            break;
+
+          case _gamepads.GAMEPAD_HANDS.RIGHT:
+            // 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
+            break;
+        }
+
+        var controller = _this3.controllers_[button.gamepad.index];
+
+        if (controller) {
+          controller.press(button.index);
+        }
+      });
+      gamepads.on('release', function (button) {
+        // console.log('release', button);
+        // this.setText(`release ${button.gamepad.hand} ${button.index}`);
+        var controller = _this3.controllers_[button.gamepad.index];
+
+        if (controller) {
+          controller.release(button.index);
+        }
+      });
+      gamepads.on('axis', function (axis) {
+        // console.log('axis', axis);
+        _this3.setText("axis ".concat(axis.gamepad.hand, " ").concat(axis.index, " { x:").concat(axis.x, ", y:").concat(axis.y, " }")); // axisup, axisdown, axisleft, axisright
+
+
+        var controller = _this3.controllers_[button.gamepad.index];
+
+        if (controller) {
+          controller.move(axis);
+        }
+      });
+      return gamepads;
+    }
+  }, {
+    key: "addController_",
+    value: function addController_(renderer, scene, gamepad) {
+      var index = gamepad.index;
+      var controller = this.controllers_[index];
+
+      if (!controller) {
+        var pivot = renderer.vr.getController(index);
+        controller = new _oculusQuestController.default(pivot, gamepad.hand);
+        this.controllers_[index] = controller;
+        scene.add(pivot);
       }
 
       return controller;
     }
   }, {
-    key: "removeController",
-    value: function removeController(gamepad) {
+    key: "removeController_",
+    value: function removeController_(gamepad) {
       var controller = this.controllers_[gamepad.index];
 
       if (controller) {
+        var pivot = controller.parent;
+        this.scene.remove(pivot);
         controller.parent.remove(controller);
         delete this.controllers_[gamepad.index];
       }
     }
   }, {
-    key: "addControllerModel",
-    value: function addControllerModel(controller, hand) {
-      var mesh = new THREE.Group();
-      var texture = new THREE.TextureLoader().load('img/matcap.jpg');
-      var material = new THREE.MeshMatcapMaterial({
-        color: hand === _gamepads.GAMEPAD_HANDS.RIGHT ? 0x991111 : 0x111199,
-        matcap: texture,
-        transparent: true,
-        opacity: 1
-      });
-      var loader = new THREE.OBJLoader();
-      loader.load(hand === _gamepads.GAMEPAD_HANDS.RIGHT ? 'models/oculus-quest/right/right.obj' : 'models/oculus-quest/left/left.obj', function (object) {
-        var x = hand === _gamepads.GAMEPAD_HANDS.RIGHT ? -(0, _const.cm)(1) : (0, _const.cm)(1);
-        object.traverse(function (child) {
-          // console.log(child);
-          if (child instanceof THREE.Mesh) {
-            child.material = material;
-            child.geometry.translate(x, 0, 0);
-          }
-        });
-        mesh.add(object);
-      }, function (xhr) {// console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
-      }, function (error) {
-        console.log('An error happened');
-      });
-      this.addControllerIndicator(controller);
-      controller.add(mesh);
-      return mesh;
+    key: "addTestController_",
+    value: function addTestController_() {
+      if (_const.TEST_ENABLED) {
+        // const controller = new Controller(this.scene, GAMEPAD_HANDS.RIGHT);
+        var controller = new _oculusQuestController.default(this.scene, _gamepads.GAMEPAD_HANDS.RIGHT);
+        controller.scale.set(10, 10, 10);
+        controller.position.set(0, 0, -5);
+        this.controller = controller;
+        this.controllers_[0] = controller;
+        this.mouse = {
+          x: 0,
+          y: 0
+        };
+        this.onMouseMove = this.onMouseMove.bind(this);
+        window.addEventListener('mousemove', this.onMouseMove);
+      }
     }
   }, {
-    key: "addControllerCylinder",
-    value: function addControllerCylinder(controller, hand) {
-      var geometry = new THREE.CylinderBufferGeometry((0, _const.cm)(2), (0, _const.cm)(2), (0, _const.cm)(12), 24);
-      var texture = new THREE.TextureLoader().load('img/matcap.jpg');
-      var material = new THREE.MeshMatcapMaterial({
-        color: hand === _gamepads.GAMEPAD_HANDS.RIGHT ? 0x991111 : 0x111199,
-        matcap: texture,
-        transparent: true,
-        opacity: 1
-      });
-      var mesh = new THREE.Mesh(geometry, material);
-      mesh.geometry.rotateX(Math.PI / 2);
-      controller.add(mesh);
-      this.addControllerIndicator(controller);
-      return mesh;
+    key: "onMouseMove",
+    value: function onMouseMove(event) {
+      try {
+        var w2 = window.innerWidth / 2;
+        var h2 = window.innerHeight / 2;
+        this.mouse.x = (event.clientX - w2) / w2;
+        this.mouse.y = -(event.clientY - h2) / h2;
+        this.updateTest(this.mouse);
+      } catch (error) {}
     }
   }, {
-    key: "addControllerIndicator",
-    value: function addControllerIndicator(controller) {
-      var geometryIndicator = new THREE.CylinderBufferGeometry((0, _const.mm)(2), (0, _const.mm)(1), (0, _const.cm)(30), 5); // 10, 12
+    key: "updateTest",
+    value: function updateTest(mouse) {
+      var controller = this.controller;
 
-      var materialIndicator = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        // matcap: texture,
-        transparent: true,
-        opacity: 0.5
-      });
-      var indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
-      controller.indicator = indicator;
-      indicator.geometry.rotateX(Math.PI / 2);
-      indicator.position.set(0, 0, -(0, _const.cm)(18.5));
+      if (controller) {
+        controller.rotation.y = -mouse.x * Math.PI;
+        controller.rotation.x = mouse.y * Math.PI / 2;
+      }
     }
   }, {
-    key: "addText",
-    value: function addText(parent) {
-      var _this3 = this;
+    key: "addText_",
+    value: function addText_(parent) {
+      var _this4 = this;
 
       var loader = new THREE.FontLoader();
       loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
-        _this3.font = font;
+        _this4.font = font;
         var material = new THREE.MeshBasicMaterial({
           color: 0x111111,
           // 0x33c5f6,
@@ -682,7 +1063,7 @@ function (_Emittable) {
           opacity: 1,
           side: THREE.DoubleSide
         });
-        _this3.fontMaterial = material;
+        _this4.fontMaterial = material;
       });
     }
   }, {
@@ -708,6 +1089,32 @@ function (_Emittable) {
         this.pivot.add(text);
       }
     }
+  }, {
+    key: "controller",
+    get: function get() {
+      return this.controller_;
+    },
+    set: function set(controller) {
+      if (this.controller_ !== controller) {
+        if (this.controller_) {
+          this.controller_.active = false;
+        }
+
+        this.controller_ = controller;
+        controller.active = true;
+      }
+    }
+  }, {
+    key: "gamepad",
+    get: function get() {
+      return this.gamepad_;
+    },
+    set: function set(gamepad) {
+      if (this.gamepad_ !== gamepad) {
+        this.gamepad_ = gamepad;
+        this.controller = this.controllers_[gamepad.index];
+      }
+    }
   }]);
 
   return Controllers;
@@ -715,7 +1122,7 @@ function (_Emittable) {
 
 exports.default = Controllers;
 
-},{"../const":1,"../interactive/emittable":2,"./gamepads":7}],7:[function(require,module,exports){
+},{"../const":1,"../interactive/emittable":2,"./controller/oculus-quest-controller":7,"./gamepads":9}],9:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1080,7 +1487,7 @@ function (_THREE$Vector) {
 
 exports.GamepadAxis = GamepadAxis;
 
-},{"../interactive/emittable":2}],8:[function(require,module,exports){
+},{"../interactive/emittable":2}],10:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1378,12 +1785,9 @@ function (_Emittable) {
         if (device.isPresenting) {
           device.exitPresent();
         } else {
-          console.log(this.renderer.domElement);
           device.requestPresent([{
             source: this.renderer.domElement
           }]).then(function () {
-            console.log('presenting');
-
             _this5.emit('presenting');
           }, function (error) {
             console.log(error);
@@ -1474,8 +1878,10 @@ VRDisplays[0]: VRDisplay {
 
 exports.VR = VR;
 
-},{"../interactive/emittable":2}],9:[function(require,module,exports){
+},{"../interactive/emittable":2}],11:[function(require,module,exports){
 "use strict";
+
+var _const = require("./const");
 
 var _interactive = _interopRequireDefault(require("./interactive/interactive.mesh"));
 
@@ -1528,29 +1934,14 @@ function () {
       var camera = this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       camera.position.set(0, 0, 10);
       camera.target = new THREE.Vector3();
-      var geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-      var material = new THREE.MeshStandardMaterial({
-        color: 0x00ff00
-      });
-      var cube = this.cube = new _interactive.default(geometry, material);
-      cube.position.set(0, 0, -5);
-      cube.on('over', function () {
-        cube.material.color.setHex(0xff0000);
-      });
-      cube.on('out', function () {
-        cube.material.color.setHex(0x00ff00);
-      });
-      cube.on('down', function () {
-        cube.material.color.setHex(0xffffff);
-      });
-      cube.on('up', function () {
-        cube.material.color.setHex(0x0000ff);
-      });
+      var cube = this.cube = this.addCube();
       scene.add(cube);
       var light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
       scene.add(light);
       var raycaster = this.raycaster = new THREE.Raycaster();
-      var renderer = this.renderer = new THREE.WebGLRenderer();
+      var renderer = this.renderer = new THREE.WebGLRenderer({
+        antialias: true
+      });
       renderer.setClearColor(0x666666, 1);
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1564,7 +1955,7 @@ function () {
       var pivot = new THREE.Group();
       scene.add(pivot);
 
-      if (this.vr.mode !== _vr.VR_MODE.NONE) {
+      if (this.vr.mode !== _vr.VR_MODE.NONE || _const.TEST_ENABLED) {
         var controllers = this.controllers = new _controllers.default(renderer, scene, pivot);
       }
 
@@ -1573,28 +1964,48 @@ function () {
       window.addEventListener('resize', this.onWindowResize, false);
     }
   }, {
+    key: "addCube",
+    value: function addCube() {
+      var geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+      var material = new THREE.MeshStandardMaterial({
+        color: 0x00ff00
+      });
+      var cube = this.cube = new _interactive.default(geometry, material);
+      cube.position.set(0, 3, -5);
+      cube.on('over', function () {
+        cube.material.color.setHex(0xff0000);
+      });
+      cube.on('out', function () {
+        cube.material.color.setHex(0x00ff00);
+      });
+      cube.on('down', function () {
+        cube.material.color.setHex(0xffffff);
+      });
+      cube.on('up', function () {
+        cube.material.color.setHex(0x0000ff);
+      });
+      return cube;
+    }
+  }, {
     key: "updateRaycaster",
     value: function updateRaycaster() {
       try {
         var controllers = this.controllers;
+        var raycaster = controllers.setRaycaster(this.raycaster);
 
-        if (controllers) {
-          var controller = controllers.controller;
+        if (raycaster) {
+          var hit = _interactive.default.hittest(raycaster, controllers.gamepads.button);
 
-          if (controller) {
-            var raycaster = this.raycaster;
-            var position = controller.position;
-            var rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
-            raycaster.set(position, rotation);
-
-            var hit = _interactive.default.hittest(raycaster, controllers.gamepads.button);
+          if (hit && hit !== this.pivot.room.sphere) {
+            controllers.feedback();
             /*
-            if (hit) {
-            	controllers.hapticFeedback();
+            if (Tone.context.state === 'running') {
+            	const feedback = this.feedback = (this.feedback || new Tone.Player('audio/feedback.mp3').toMaster());
+            	feedback.start();
             }
             */
+          } // this.updatePointer(raycaster);
 
-          }
         }
       } catch (error) {
         this.debugInfo.innerHTML = error;
@@ -1611,9 +2022,9 @@ function () {
 
         if (this.controllers) {
           this.controllers.update();
+          this.updateRaycaster();
         }
 
-        this.updateRaycaster();
         var renderer = this.renderer;
         renderer.render(this.scene, this.camera);
         this.i++;
@@ -1661,5 +2072,5 @@ function () {
 var tour = new vrui();
 tour.animate();
 
-},{"./interactive/interactive.mesh":5,"./vr/controllers":6,"./vr/vr":8}]},{},[9]);
+},{"./const":1,"./interactive/interactive.mesh":5,"./vr/controllers":8,"./vr/vr":10}]},{},[11]);
 //# sourceMappingURL=vrui.js.map
