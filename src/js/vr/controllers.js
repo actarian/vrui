@@ -9,16 +9,15 @@ import Gamepads, { GAMEPAD_HANDS } from './gamepads';
 
 export default class Controllers extends Emittable {
 
-	constructor(renderer, scene, pivot) {
+	constructor(renderer, scene) {
 		super();
 		this.tick = 0;
 		this.controllers_ = {};
 		this.gamepads_ = {};
 		this.renderer = renderer;
 		this.scene = scene;
-		this.pivot = pivot;
 		this.direction = new THREE.Vector3();
-		const text = this.text = this.addText_(pivot);
+		const text = this.text = this.addText_(scene);
 		const gamepads = this.gamepads = this.addGamepads_();
 		this.addTestController_();
 	}
@@ -137,6 +136,9 @@ export default class Controllers extends Emittable {
 				controller.move(axis);
 			}
 		});
+		gamepads.on('broadcast', (type, event) => {
+			this.emit(type, event);
+		});
 		return gamepads;
 	}
 
@@ -166,7 +168,7 @@ export default class Controllers extends Emittable {
 		if (TEST_ENABLED) {
 			// const controller = new Controller(this.scene, GAMEPAD_HANDS.RIGHT);
 			const controller = new OculusQuestController(this.scene, GAMEPAD_HANDS.RIGHT);
-			controller.scale.set(10, 10, 10);
+			controller.scale.set(15, 15, 15);
 			controller.position.set(0, 0, -5);
 			this.controller = controller;
 			this.controllers_[0] = controller;
@@ -226,7 +228,7 @@ export default class Controllers extends Emittable {
 			const text = new THREE.Mesh(geometry, this.fontMaterial);
 			text.position.set(0, 0, -POINTER_RADIUS);
 			this.text = text;
-			this.pivot.add(text);
+			this.scene.add(text);
 		}
 	}
 

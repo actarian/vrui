@@ -24,8 +24,8 @@ export default class Controller extends THREE.Group {
 	constructor(parent, hand) {
 		super();
 		this.ready = false;
-		this.buttons = [];
-		this.tween = { value: 0 };
+		this.buttons = new Array(10).fill({ value: 0 });
+		this.axis = new Array(2).fill(new THREE.Vector2());
 		this.parent = parent;
 		this.hand = hand;
 		const model = this.model = this.addModel(hand);
@@ -50,7 +50,7 @@ export default class Controller extends THREE.Group {
 	}
 
 	addRay(hand) {
-		const geometry = new THREE.CylinderBufferGeometry(mm(2), mm(1), cm(30), 5); // 10, 12
+		const geometry = new THREE.CylinderBufferGeometry(mm(1), mm(0.5), cm(30), 5); // 10, 12
 		geometry.rotateX(Math.PI / 2);
 		const material = new THREE.MeshBasicMaterial({
 			color: 0xffffff,
@@ -67,31 +67,35 @@ export default class Controller extends THREE.Group {
 	}
 
 	press(index) {
-		TweenMax.to(this.tween, 0.4, {
+		TweenMax.to(this.buttons[index], 0.3, {
 			value: 1,
 			ease: Power2.easeOut,
+			/*
 			onUpdate: () => {
 				if (typeof this.buttons[index] === 'function') {
 					this.buttons[index](this.tween.value);
 				}
 			}
+			*/
 		});
 	}
 
 	release(index) {
-		TweenMax.to(this.tween, 0.4, {
+		TweenMax.to(this.buttons[index], 0.3, {
 			value: 0,
 			ease: Power2.easeOut,
+			/*
 			onUpdate: () => {
 				if (typeof this.buttons[index] === 'function') {
 					this.buttons[index](this.tween.value);
 				}
 			}
+			*/
 		});
 	}
 
 	move(axis) {
-
+		this.axis[axis.index] = axis;
 	}
 
 	static getCos(tick, i = 0) {
@@ -104,5 +108,11 @@ export default class Controller extends THREE.Group {
 			a.g + (b.g - a.g) * value,
 			a.b + (b.b - a.b) * value
 		);
+	}
+
+	static mixUniformColor(uniform, a, b, value) {
+		uniform.value.r = a.r + (b.r - a.r) * value;
+		uniform.value.g = a.g + (b.g - a.g) * value;
+		uniform.value.b = a.b + (b.b - a.b) * value;
 	}
 }
