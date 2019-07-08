@@ -4,7 +4,6 @@
 // import * as THREE from 'three';
 // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-import { Power2, TweenMax } from 'gsap';
 import { cm, TEST_ENABLED } from './const';
 import InteractiveMesh from './interactive/interactive.mesh';
 import Controllers from './vr/controllers';
@@ -68,7 +67,7 @@ class vrui {
 		if (this.vr.mode !== VR_MODE.NONE || TEST_ENABLED) {
 			const controllers = this.controllers = new Controllers(renderer, scene);
 			controllers.on('press', (button) => {
-				console.log('controllers.press', button.gamepad.hand, button.index);
+				console.log('vrui.press', button.gamepad.hand, button.index);
 				switch (button.gamepad.hand) {
 					case GAMEPAD_HANDS.LEFT:
 						// 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
@@ -85,29 +84,29 @@ class vrui {
 				}
 			});
 			controllers.on('release', (button) => {
-				console.log('controllers.release', button.gamepad.hand, button.index);
+				console.log('vrui.release', button.gamepad.hand, button.index);
 			});
 			controllers.on('left', (axis) => {
-				console.log('controllers.left', axis.gamepad.hand, axis.index);
 				if (axis.gamepad.hand === GAMEPAD_HANDS.LEFT) {
+					console.log('vrui.left', axis.gamepad.hand, axis.index);
 					TweenMax.to(cube0.userData.rotation, 0.3, {
-						x: cube0.userData.rotation.x - Math.PI / 2,
+						y: cube0.userData.rotation.y - Math.PI / 2,
 						ease: Power2.easeInOut
 					});
 				}
 			});
 			controllers.on('right', (axis) => {
-				console.log('controllers.right', axis.gamepad.hand, axis.index);
 				if (axis.gamepad.hand === GAMEPAD_HANDS.LEFT) {
+					console.log('vrui.right', axis.gamepad.hand, axis.index);
 					TweenMax.to(cube0.userData.rotation, 0.3, {
-						x: cube0.userData.rotation.x + Math.PI / 2,
+						y: cube0.userData.rotation.y + Math.PI / 2,
 						ease: Power2.easeInOut
 					});
 				}
 			});
 			controllers.on('up', (axis) => {
-				console.log('controllers.up', axis.gamepad.hand, axis.index);
 				if (axis.gamepad.hand === GAMEPAD_HANDS.LEFT) {
+					console.log('vrui.up', axis.gamepad.hand, axis.index);
 					const s = Math.min(2.0, cube0.userData.scale.x + 0.1);
 					TweenMax.to(cube0.userData.scale, 0.3, {
 						x: s,
@@ -118,8 +117,8 @@ class vrui {
 				}
 			});
 			controllers.on('down', (axis) => {
-				console.log('controllers.down', axis.gamepad.hand, axis.index);
 				if (axis.gamepad.hand === GAMEPAD_HANDS.LEFT) {
+					console.log('vrui.down', axis.gamepad.hand, axis.index);
 					const s = Math.max(0.1, cube0.userData.scale.x - 0.1);
 					TweenMax.to(cube0.userData.scale, 0.3, {
 						x: s,
@@ -130,11 +129,11 @@ class vrui {
 				}
 			});
 			controllers.on('axis', (axis) => {
-				console.log('controllers.axis', axis.gamepad.hand, axis.index);
+				console.log('vrui.axis', axis.gamepad.hand, axis.index);
 				if (axis.gamepad.hand === GAMEPAD_HANDS.RIGHT) {
-					const s = Math.max(0.1, Math.min(2, cube1.scale.x + axis.y));
+					const s = Math.max(0.1, Math.min(2, cube1.scale.x + axis.y * 0.1));
 					cube1.userData.scale.set(s, s, s);
-					cube1.userData.rotation.x += axis.x;
+					cube1.userData.rotation.y += axis.x * 0.2;
 				}
 			});
 		}
