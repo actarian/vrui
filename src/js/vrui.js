@@ -57,7 +57,7 @@ class vrui {
 		/*
 		const bg = this.bg = this.addBG();
 		scene.add(bg);
-*/
+		*/
 
 		const cube0 = this.cube0 = this.addCube(0);
 		scene.add(cube0);
@@ -89,43 +89,53 @@ class vrui {
 			});
 			controllers.on('left', (axis) => {
 				console.log('controllers.left', axis.gamepad.hand, axis.index);
-				TweenMax.to(cube0.userData.rotation, 0.3, {
-					x: cube0.userData.rotation.x - Math.PI / 2,
-					ease: Power2.easeInOut
-				});
+				if (axis.gamepad.hand === GAMEPAD_HANDS.LEFT) {
+					TweenMax.to(cube0.userData.rotation, 0.3, {
+						x: cube0.userData.rotation.x - Math.PI / 2,
+						ease: Power2.easeInOut
+					});
+				}
 			});
 			controllers.on('right', (axis) => {
 				console.log('controllers.right', axis.gamepad.hand, axis.index);
-				TweenMax.to(cube0.userData.rotation, 0.3, {
-					x: cube0.userData.rotation.x + Math.PI / 2,
-					ease: Power2.easeInOut
-				});
+				if (axis.gamepad.hand === GAMEPAD_HANDS.LEFT) {
+					TweenMax.to(cube0.userData.rotation, 0.3, {
+						x: cube0.userData.rotation.x + Math.PI / 2,
+						ease: Power2.easeInOut
+					});
+				}
 			});
 			controllers.on('up', (axis) => {
 				console.log('controllers.up', axis.gamepad.hand, axis.index);
-				const s = Math.min(2.0, cube0.userData.scale.x + 0.1);
-				TweenMax.to(cube0.userData.scale, 0.3, {
-					x: s,
-					y: s,
-					z: s,
-					ease: Power2.easeInOut
-				});
+				if (axis.gamepad.hand === GAMEPAD_HANDS.LEFT) {
+					const s = Math.min(2.0, cube0.userData.scale.x + 0.1);
+					TweenMax.to(cube0.userData.scale, 0.3, {
+						x: s,
+						y: s,
+						z: s,
+						ease: Power2.easeInOut
+					});
+				}
 			});
 			controllers.on('down', (axis) => {
 				console.log('controllers.down', axis.gamepad.hand, axis.index);
-				const s = Math.max(0.1, cube0.userData.scale.x - 0.1);
-				TweenMax.to(cube0.userData.scale, 0.3, {
-					x: s,
-					y: s,
-					z: s,
-					ease: Power2.easeInOut
-				});
+				if (axis.gamepad.hand === GAMEPAD_HANDS.LEFT) {
+					const s = Math.max(0.1, cube0.userData.scale.x - 0.1);
+					TweenMax.to(cube0.userData.scale, 0.3, {
+						x: s,
+						y: s,
+						z: s,
+						ease: Power2.easeInOut
+					});
+				}
 			});
 			controllers.on('axis', (axis) => {
 				console.log('controllers.axis', axis.gamepad.hand, axis.index);
-				const s = Math.max(0.1, Math.min(2, cube1.scale.x + axis.y));
-				cube1.userData.scale.set(s, s, s);
-				cube1.userData.rotation.x += axis.x;
+				if (axis.gamepad.hand === GAMEPAD_HANDS.RIGHT) {
+					const s = Math.max(0.1, Math.min(2, cube1.scale.x + axis.y));
+					cube1.userData.scale.set(s, s, s);
+					cube1.userData.rotation.x += axis.x;
+				}
 			});
 		}
 
@@ -135,8 +145,8 @@ class vrui {
 
 	addCube(index) {
 		const geometry = new THREE.BoxGeometry(cm(20), cm(20), cm(20));
-		const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-		const cube = this.cube = new InteractiveMesh(geometry, material);
+		const material = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+		const cube = new InteractiveMesh(geometry, material);
 		cube.position.set(index === 0 ? -cm(30) : cm(30), cm(136), -2);
 		cube.userData = {
 			scale: new THREE.Vector3(1, 1, 1),
@@ -146,7 +156,6 @@ class vrui {
 		cube.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
 			cube.scale.set(cube.userData.scale.x, cube.userData.scale.y, cube.userData.scale.z);
 			cube.rotation.set(cube.userData.rotation.x, cube.userData.rotation.y, cube.userData.rotation.z);
-			// cube.position.set(cube.userData.position.x, cube.userData.position.y, cube.userData.position.z);
 			/*
 			cube.rotation.y += Math.PI / 180 * 5;
 			cube.rotation.x += Math.PI / 180 * 1;
@@ -155,16 +164,16 @@ class vrui {
 			*/
 		};
 		cube.on('over', () => {
-			cube.material.color.setHex(0xff0000);
-		});
-		cube.on('out', () => {
-			cube.material.color.setHex(0x00ff00);
-		});
-		cube.on('down', () => {
 			cube.material.color.setHex(0xffffff);
 		});
-		cube.on('up', () => {
+		cube.on('out', () => {
+			cube.material.color.setHex(0xcccccc);
+		});
+		cube.on('down', () => {
 			cube.material.color.setHex(0x0000ff);
+		});
+		cube.on('up', () => {
+			cube.material.color.setHex(0xcccccc);
 		});
 		return cube;
 	}
