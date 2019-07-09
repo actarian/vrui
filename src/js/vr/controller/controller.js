@@ -118,3 +118,6 @@ export default class Controller extends THREE.Group {
 		uniform.value.b = a.b + (b.b - a.b) * value;
 	}
 }
+
+// Controller.clock = new THREE.Clock();
+// const clock = this.clock || (this.clock = new THREE.Clock());
