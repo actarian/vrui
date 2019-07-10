@@ -1335,7 +1335,7 @@ function (_Emittable) {
     }
   }, {
     key: "log",
-    value: function log(message) {
+    value: function log(message, object) {
       if (this.options.debug) {
         console.log(message, object);
         this.setText(message);

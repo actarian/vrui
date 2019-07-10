@@ -216,7 +216,7 @@ export default class Controllers extends Emittable {
 		}
 	}
 
-	log(message) {
+	log(message, object) {
 		if (this.options.debug) {
 			console.log(message, object);
 			this.setText(message);
