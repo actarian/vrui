@@ -445,6 +445,18 @@ InteractiveMesh.items = [];
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.ControllerFragGlsl = void 0;
+var ControllerFragGlsl =
+/* glsl */
+"\n#define MATCAP\nuniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float emissiveIntensity;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tvec4 emissiveColor = vec4( emissive, opacity );\n\t#include <logdepthbuf_fragment>\n\t/* #include <map_fragment> */\n\t#ifdef USE_MAP\n\t\tvec4 texelColor = texture2D( map, vUv );\n\t\ttexelColor = mapTexelToLinear( texelColor );\n\t\tdiffuseColor *= texelColor;\n\t\tdiffuseColor = mix(diffuseColor, emissiveColor, emissiveIntensity);\n\t#endif\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * (matcapColor.rgb + emissiveIntensity * 0.5); // max(matcapColor.rgb, emissiveColor.rgb);\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <premultiplied_alpha_fragment>\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n}\n";
+exports.ControllerFragGlsl = ControllerFragGlsl;
+
+},{}],7:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
 exports.default = void 0;
 
 var _const = require("../../const");
@@ -618,7 +630,7 @@ function (_THREE$Group) {
 
 exports.default = Controller;
 
-},{"../../const":1,"../gamepads":9}],7:[function(require,module,exports){
+},{"../../const":1,"../gamepads":10}],8:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -631,6 +643,8 @@ var _const = require("../../const");
 var _gamepads = require("../gamepads");
 
 var _controller = _interopRequireDefault(require("./controller"));
+
+var _controllerFrag = require("./controller-frag.glsl");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -655,63 +669,57 @@ function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || func
 var OFF = new THREE.Color(0x000000);
 var ON = new THREE.Color(0x2196f3);
 
-var HandController =
+var OculusQuestController =
 /*#__PURE__*/
 function (_Controller) {
-  _inherits(HandController, _Controller);
+  _inherits(OculusQuestController, _Controller);
 
-  function HandController(parent, hand) {
-    _classCallCheck(this, HandController);
+  function OculusQuestController(parent, hand) {
+    _classCallCheck(this, OculusQuestController);
 
-    return _possibleConstructorReturn(this, _getPrototypeOf(HandController).call(this, parent, hand));
+    return _possibleConstructorReturn(this, _getPrototypeOf(OculusQuestController).call(this, parent, hand));
   }
 
-  _createClass(HandController, [{
+  _createClass(OculusQuestController, [{
     key: "addModel",
     value: function addModel(hand) {
       var _this = this;
 
       var format = '.fbx'; // '.obj';
 
-      var path = "".concat(HandController.FOLDER, "/").concat(hand, "/").concat(hand, "-animated");
-      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg'); // const texture = new THREE.TextureLoader().load(`${path}.jpg`);
-
+      var path = "".concat(OculusQuestController.FOLDER, "/").concat(hand, "/").concat(hand);
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-04.jpg');
+      var texture = new THREE.TextureLoader().load("".concat(path, ".jpg"));
       var material = new THREE.MeshMatcapMaterial({
         color: 0xffffff,
-        // 0xccac98,
-        // map: texture,
-        matcap: matcap // transparent: true,
-        // opacity: 1,
-        // wireframe: true,
-
+        map: texture,
+        matcap: matcap,
+        transparent: true,
+        opacity: 1
       });
       var mesh = new THREE.Group();
       var loader = format === '.fbx' ? new THREE.FBXLoader() : new THREE.OBJLoader();
       var i = 0;
       loader.load("".concat(path).concat(format), function (object) {
-        var mixer = _this.mixer = new THREE.AnimationMixer(object);
-        var action = _this.action = mixer.clipAction(object.animations[0]);
-        console.log(object.animations);
         object.traverse(function (child) {
           if (child instanceof THREE.Mesh) {
             child.material = material.clone();
-            /*
-            child.material.onBeforeCompile = (shader) => {
-            	// shader.uniforms.emissive = new THREE.Uniform(new THREE.Color(0x000000));
-            	shader.uniforms.emissive = new THREE.Uniform(ON);
-            	shader.uniforms.emissiveIntensity = { value: 0 };
-            	shader.fragmentShader = ControllerFragGlsl;
-            	child.shader = shader;
+
+            child.material.onBeforeCompile = function (shader) {
+              // shader.uniforms.emissive = new THREE.Uniform(new THREE.Color(0x000000));
+              shader.uniforms.emissive = new THREE.Uniform(ON);
+              shader.uniforms.emissiveIntensity = {
+                value: 0
+              };
+              shader.fragmentShader = _controllerFrag.ControllerFragGlsl;
+              child.shader = shader;
             };
-            */
-            // child.geometry.rotateX(child.rotation.x);
-            // child.geometry.rotateY(child.rotation.y);
-            // child.geometry.rotateZ(child.rotation.z);
 
-            child.geometry.scale(0.1, 0.1, 0.1); // child.rotation.set(0, 0, 0);
-
-            var position = child.position.clone();
-            console.log(child); // left > 0 joystick, 1 trigger, 2 grip, 3 X, 4 Y
+            child.geometry.rotateX(child.rotation.x);
+            child.geometry.rotateY(child.rotation.y);
+            child.geometry.rotateZ(child.rotation.z);
+            child.rotation.set(0, 0, 0);
+            var position = child.position.clone(); // left > 0 joystick, 1 trigger, 2 grip, 3 X, 4 Y
             // right > 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
 
             switch (child.name) {
@@ -786,18 +794,13 @@ function (_Controller) {
 
             i++;
           }
-        }); // object.scale.set(0.01, 0.01, 0.01);
-        // object.scale.set(0.1, 0.1, 0.1);
-
+        });
         mesh.add(object);
-        setTimeout(function () {
-          _this.action.play();
-        }, 2000);
         _this.ready = true;
       }, function (xhr) {
         _this.progress = xhr.loaded / xhr.total;
       }, function (error) {
-        console.log("HandController.addModel not found ".concat(path, ".obj"));
+        console.log("OculusQuestController.addModel not found ".concat(path, ".obj"));
       });
       return mesh;
     }
@@ -819,12 +822,6 @@ function (_Controller) {
   }, {
     key: "update",
     value: function update(tick) {
-      if (this.mixer) {
-        var clock = this.clock || (this.clock = new THREE.Clock());
-        var delta = clock.getDelta();
-        this.mixer.update(delta);
-      }
-
       this.test(tick);
     }
   }, {
@@ -841,13 +838,13 @@ function (_Controller) {
     }
   }]);
 
-  return HandController;
+  return OculusQuestController;
 }(_controller.default);
 
-exports.default = HandController;
-HandController.FOLDER = "models/hand";
+exports.default = OculusQuestController;
+OculusQuestController.FOLDER = "models/oculus-quest";
 
-},{"../../const":1,"../gamepads":9,"./controller":6}],8:[function(require,module,exports){
+},{"../../const":1,"../gamepads":10,"./controller":7,"./controller-frag.glsl":6}],9:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -859,7 +856,7 @@ var _const = require("../const");
 
 var _emittable = _interopRequireDefault(require("../interactive/emittable"));
 
-var _handController = _interopRequireDefault(require("./controller/hand-controller"));
+var _oculusQuestController = _interopRequireDefault(require("./controller/oculus-quest-controller"));
 
 var _gamepads = _interopRequireWildcard(require("./gamepads"));
 
@@ -1036,7 +1033,7 @@ function (_Emittable) {
 
       if (!controller) {
         var pivot = renderer.vr.getController(index);
-        controller = new OculusQuestController(pivot, gamepad.hand);
+        controller = new _oculusQuestController.default(pivot, gamepad.hand);
         this.controllers_[index] = controller;
         scene.add(pivot);
       }
@@ -1060,10 +1057,10 @@ function (_Emittable) {
     value: function addTestController_() {
       if (_const.TEST_ENABLED) {
         // const controller = new Controller(this.scene, GAMEPAD_HANDS.RIGHT);
-        // const controller = new OculusQuestController(this.scene, GAMEPAD_HANDS.RIGHT);
-        var controller = new _handController.default(this.scene, _gamepads.GAMEPAD_HANDS.RIGHT);
-        controller.scale.set(15, 15, 15);
-        controller.position.set(0, 0, -5);
+        var controller = new _oculusQuestController.default(this.scene, _gamepads.GAMEPAD_HANDS.RIGHT); // const controller = new HandController(this.scene, GAMEPAD_HANDS.RIGHT);
+        // controller.scale.set(15, 15, 15);
+
+        controller.position.set(0, 1, -2);
         this.controller = controller;
         this.controllers_[0] = controller;
         this.mouse = {
@@ -1169,7 +1166,7 @@ function (_Emittable) {
 
 exports.default = Controllers;
 
-},{"../const":1,"../interactive/emittable":2,"./controller/hand-controller":7,"./gamepads":9}],9:[function(require,module,exports){
+},{"../const":1,"../interactive/emittable":2,"./controller/oculus-quest-controller":8,"./gamepads":10}],10:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1566,7 +1563,7 @@ function (_THREE$Vector) {
 
 exports.GamepadAxis = GamepadAxis;
 
-},{"../interactive/emittable":2}],10:[function(require,module,exports){
+},{"../interactive/emittable":2}],11:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1955,7 +1952,7 @@ VRDisplays[0]: VRDisplay {
 
 exports.VR = VR;
 
-},{"../interactive/emittable":2}],11:[function(require,module,exports){
+},{"../interactive/emittable":2}],12:[function(require,module,exports){
 "use strict";
 
 var _const = require("./const");
@@ -2029,13 +2026,14 @@ function () {
       camera.position.set(0, (0, _const.cm)(176), 0);
       camera.target = new THREE.Vector3(0, (0, _const.cm)(176), -2);
       camera.lookAt(camera.target);
-      var light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
-      scene.add(light);
       /*
-      const bg = this.bg = this.addBG();
-      scene.add(bg);
+      const light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
+      scene.add(light);
       */
 
+      var hdr = this.hdr = this.getEnvMap(function (texture, textureData) {});
+      var bg = this.bg = this.addBG();
+      scene.add(bg);
       var cube0 = this.cube0 = this.addCube(0);
       scene.add(cube0);
       var cube1 = this.cube1 = this.addCube(1);
@@ -2125,9 +2123,11 @@ function () {
   }, {
     key: "addCube",
     value: function addCube(index) {
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-00.jpg');
       var geometry = new THREE.BoxGeometry((0, _const.cm)(20), (0, _const.cm)(20), (0, _const.cm)(20));
-      var material = new THREE.MeshStandardMaterial({
-        color: 0xcccccc
+      var material = new THREE.MeshMatcapMaterial({
+        color: 0xffffff,
+        matcap: matcap
       });
       var cube = new _interactive.default(geometry, material);
       cube.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(136), -2);
@@ -2165,24 +2165,58 @@ function () {
   }, {
     key: "addBG",
     value: function addBG() {
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-10.jpg');
       var geometry = new THREE.Geometry();
       var origin = new THREE.Vector3();
-      new Array(100).fill().forEach(function (x) {
-        var s = 1.0 + Math.random() * 5.0;
-        var h = 1.0 + Math.random() * 5.0;
-        var r = 5 + Math.random() * 5;
+      new Array(300).fill().forEach(function (x) {
+        var s = (0, _const.cm)(30) + Math.random() * (0, _const.cm)(0);
+        var h = 3.0 + Math.random() * 3.0;
+        var r = 5 + Math.random() * 20;
         var a = Math.PI * 2 * Math.random();
         var cubeGeometry = new THREE.BoxGeometry(s, h, s);
-        geometry.translate(Math.cos(a) * r, 0, Math.sin(a) * r); // geometry.lookAt(origin);
-
+        cubeGeometry.translate(Math.cos(a) * r, h / 2, Math.sin(a) * r);
+        cubeGeometry.lookAt(origin);
         geometry.merge(cubeGeometry);
       });
       var bufferGeometry = new THREE.BufferGeometry().fromGeometry(geometry);
-      var material = new THREE.MeshBasicMaterial({
-        color: 0xcccccc
+      var material = new THREE.MeshMatcapMaterial({
+        color: 0x333333,
+        matcap: matcap
       });
       var mesh = new THREE.Mesh(bufferGeometry, material);
+      /*
+      mesh.onBeforeRender = () => {
+      	mesh.rotation.y += 0.001;
+      };
+      */
+
       return mesh;
+    }
+  }, {
+    key: "getEnvMap",
+    value: function getEnvMap(callback) {
+      var _this2 = this;
+
+      var loader = new THREE.TextureLoader().load('img/environment/360_world.jpg', function (source, textureData) {
+        source.mapping = THREE.UVMapping;
+        var options = {
+          resolution: 1024,
+          generateMipmaps: true,
+          minFilter: THREE.LinearMipMapLinearFilter,
+          magFilter: THREE.LinearFilter
+        };
+        _this2.scene.background = new THREE.CubemapGenerator(_this2.renderer).fromEquirectangular(source, options);
+        var cubemapGenerator = new THREE.EquirectangularToCubeGenerator(source, options);
+        var texture = cubemapGenerator.update(_this2.renderer);
+        texture.mapping = THREE.CubeReflectionMapping;
+        texture.mapping = THREE.CubeRefractionMapping;
+        source.dispose();
+
+        if (typeof callback === 'function') {
+          callback(texture);
+        }
+      });
+      return loader;
     }
   }, {
     key: "updateRaycaster",
@@ -2227,11 +2261,11 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this2 = this;
+      var _this3 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this2.render();
+        _this3.render();
       });
     }
   }, {
@@ -2264,5 +2298,5 @@ function () {
 var tour = new vrui();
 tour.animate();
 
-},{"./const":1,"./interactive/interactive.mesh":5,"./vr/controllers":8,"./vr/gamepads":9,"./vr/vr":10}]},{},[11]);
+},{"./const":1,"./interactive/interactive.mesh":5,"./vr/controllers":9,"./vr/gamepads":10,"./vr/vr":11}]},{},[12]);
 //# sourceMappingURL=vrui.js.map

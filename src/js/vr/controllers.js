@@ -4,8 +4,8 @@
 import { POINTER_RADIUS, TEST_ENABLED } from '../const';
 import Emittable from '../interactive/emittable';
 // import Controller from './controller/controller';
-// import OculusQuestController from './controller/oculus-quest-controller';
-import HandController from './controller/hand-controller';
+import OculusQuestController from './controller/oculus-quest-controller';
+// import HandController from './controller/hand-controller';
 import Gamepads, { GAMEPAD_HANDS } from './gamepads';
 
 export default class Controllers extends Emittable {
@@ -167,10 +167,10 @@ export default class Controllers extends Emittable {
 	addTestController_() {
 		if (TEST_ENABLED) {
 			// const controller = new Controller(this.scene, GAMEPAD_HANDS.RIGHT);
-			// const controller = new OculusQuestController(this.scene, GAMEPAD_HANDS.RIGHT);
-			const controller = new HandController(this.scene, GAMEPAD_HANDS.RIGHT);
-			controller.scale.set(15, 15, 15);
-			controller.position.set(0, 0, -5);
+			const controller = new OculusQuestController(this.scene, GAMEPAD_HANDS.RIGHT);
+			// const controller = new HandController(this.scene, GAMEPAD_HANDS.RIGHT);
+			// controller.scale.set(15, 15, 15);
+			controller.position.set(0, 1, -2);
 			this.controller = controller;
 			this.controllers_[0] = controller;
 			this.mouse = { x: 0, y: 0 };

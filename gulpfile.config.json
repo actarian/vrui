@@ -20,7 +20,10 @@
 					"node_modules/three/examples/js/loaders/MTLLoader.js",
 					"node_modules/three/examples/js/loaders/OBJLoader.js",
 					"node_modules/three/examples/js/loaders/FBXLoader.js",
-					"node_modules/three/examples/js/libs/inflate.min.js"
+					"node_modules/three/examples/js/libs/inflate.min.js",
+					"node_modules/three/examples/js/loaders/EquirectangularToCubeGenerator.js",
+					"node_modules/three/examples/js/loaders/RGBELoader.js",
+					"node_modules/three/examples/js/utils/BufferGeometryUtils.js"
 				],
 				"output": "docs/js/vrui-vendors.js",
 				"minify": true

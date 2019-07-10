@@ -31,11 +31,6 @@ export default class OculusQuestController extends Controller {
 		const loader = format === '.fbx' ? new THREE.FBXLoader() : new THREE.OBJLoader();
 		let i = 0;
 		loader.load(`${path}${format}`, (object) => {
-			/*
-			const mixer = new THREE.AnimationMixer(object);
-			const action = mixer.clipAction(object.animations[0]);
-			action.play();
-			*/
 			object.traverse((child) => {
 				if (child instanceof THREE.Mesh) {
 					child.material = material.clone();

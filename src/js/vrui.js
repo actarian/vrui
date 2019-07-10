@@ -50,13 +50,15 @@ class vrui {
 		camera.target = new THREE.Vector3(0, cm(176), -2);
 		camera.lookAt(camera.target);
 
+		/*
 		const light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
 		scene.add(light);
+		*/
 
-		/*
+		const hdr = this.hdr = this.getEnvMap((texture, textureData) => {});
+
 		const bg = this.bg = this.addBG();
 		scene.add(bg);
-		*/
 
 		const cube0 = this.cube0 = this.addCube(0);
 		scene.add(cube0);
@@ -143,8 +145,12 @@ class vrui {
 	}
 
 	addCube(index) {
+		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-00.jpg');
 		const geometry = new THREE.BoxGeometry(cm(20), cm(20), cm(20));
-		const material = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+		const material = new THREE.MeshMatcapMaterial({
+			color: 0xffffff,
+			matcap: matcap,
+		});
 		const cube = new InteractiveMesh(geometry, material);
 		cube.position.set(index === 0 ? -cm(30) : cm(30), cm(136), -2);
 		cube.userData = {
@@ -178,24 +184,53 @@ class vrui {
 	}
 
 	addBG() {
+		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-10.jpg');
 		const geometry = new THREE.Geometry();
 		const origin = new THREE.Vector3();
-		new Array(100).fill().forEach(x => {
-			const s = 1.0 + Math.random() * 5.0;
-			const h = 1.0 + Math.random() * 5.0;
-			const r = 5 + Math.random() * 5;
+		new Array(300).fill().forEach(x => {
+			const s = cm(30) + Math.random() * cm(0);
+			const h = 3.0 + Math.random() * 3.0;
+			const r = 5 + Math.random() * 20;
 			const a = Math.PI * 2 * Math.random();
 			const cubeGeometry = new THREE.BoxGeometry(s, h, s);
-			geometry.translate(Math.cos(a) * r, 0, Math.sin(a) * r);
-			// geometry.lookAt(origin);
+			cubeGeometry.translate(Math.cos(a) * r, h / 2, Math.sin(a) * r);
+			cubeGeometry.lookAt(origin);
 			geometry.merge(cubeGeometry);
 		});
 		const bufferGeometry = new THREE.BufferGeometry().fromGeometry(geometry);
-		const material = new THREE.MeshBasicMaterial({
-			color: 0xcccccc
+		const material = new THREE.MeshMatcapMaterial({
+			color: 0x333333,
+			matcap: matcap,
 		});
 		const mesh = new THREE.Mesh(bufferGeometry, material);
+		/*
+		mesh.onBeforeRender = () => {
+			mesh.rotation.y += 0.001;
+		};
+		*/
 		return mesh;
+	}
+
+	getEnvMap(callback) {
+		const loader = new THREE.TextureLoader().load('img/environment/360_world.jpg', (source, textureData) => {
+			source.mapping = THREE.UVMapping;
+			const options = {
+				resolution: 1024,
+				generateMipmaps: true,
+				minFilter: THREE.LinearMipMapLinearFilter,
+				magFilter: THREE.LinearFilter
+			};
+			this.scene.background = new THREE.CubemapGenerator(this.renderer).fromEquirectangular(source, options);
+			const cubemapGenerator = new THREE.EquirectangularToCubeGenerator(source, options);
+			const texture = cubemapGenerator.update(this.renderer);
+			texture.mapping = THREE.CubeReflectionMapping;
+			texture.mapping = THREE.CubeRefractionMapping;
+			source.dispose();
+			if (typeof callback === 'function') {
+				callback(texture);
+			}
+		});
+		return loader;
 	}
 
 	updateRaycaster() {

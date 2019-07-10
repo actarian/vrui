@@ -63478,3 +63478,1284 @@ w.prototype.z=function(c){var d,a=this.input.length/this.a+1|0,b,e,f,g=this.inpu
 w.prototype.n=function(){var c=0,d=this.c,a=this.g,b,e=new (t?Uint8Array:Array)(this.l+(this.b-32768)),f,g,h,k;if(0===a.length)return t?this.c.subarray(32768,this.b):this.c.slice(32768,this.b);f=0;for(g=a.length;f<g;++f){b=a[f];h=0;for(k=b.length;h<k;++h)e[c++]=b[h]}f=32768;for(g=this.b;f<g;++f)e[c++]=d[f];this.g=[];return this.buffer=e};
 w.prototype.v=function(){var c,d=this.b;t?this.r?(c=new Uint8Array(d),c.set(this.c.subarray(0,d))):c=this.c.subarray(0,d):(this.c.length>d&&(this.c.length=d),c=this.c);return this.buffer=c};function W(c,d){var a,b;this.input=c;this.a=0;if(d||!(d={}))d.index&&(this.a=d.index),d.verify&&(this.A=d.verify);a=c[this.a++];b=c[this.a++];switch(a&15){case ha:this.method=ha;break;default:throw Error("unsupported compression method");}if(0!==((a<<8)+b)%31)throw Error("invalid fcheck flag:"+((a<<8)+b)%31);if(b&32)throw Error("fdict flag is not supported");this.q=new w(c,{index:this.a,bufferSize:d.bufferSize,bufferType:d.bufferType,resize:d.resize})}
 W.prototype.k=function(){var c=this.input,d,a;d=this.q.k();this.a=this.q.a;if(this.A){a=(c[this.a++]<<24|c[this.a++]<<16|c[this.a++]<<8|c[this.a++])>>>0;var b=d;if("string"===typeof b){var e=b.split(""),f,g;f=0;for(g=e.length;f<g;f++)e[f]=(e[f].charCodeAt(0)&255)>>>0;b=e}for(var h=1,k=0,m=b.length,n,p=0;0<m;){n=1024<m?1024:m;m-=n;do h+=b[p++],k+=h;while(--n);h%=65521;k%=65521}if(a!==(k<<16|h)>>>0)throw Error("invalid adler-32 checksum");}return d};var ha=8;r("Zlib.Inflate",W);r("Zlib.Inflate.prototype.decompress",W.prototype.k);var X={ADAPTIVE:B.s,BLOCK:B.t},Y,Z,$,ia;if(Object.keys)Y=Object.keys(X);else for(Z in Y=[],$=0,X)Y[$++]=Z;$=0;for(ia=Y.length;$<ia;++$)Z=Y[$],r("Zlib.Inflate.BufferType."+Z,X[Z]);}).call(this);
+
+/**
+* @author Richard M. / https://github.com/richardmonette
+* @author WestLangley / http://github.com/WestLangley
+*/
+
+THREE.CubemapGenerator = function ( renderer ) {
+
+	this.renderer = renderer;
+
+};
+
+THREE.CubemapGenerator.prototype.fromEquirectangular = function ( texture, options ) {
+
+	options = options || {};
+
+	var scene = new THREE.Scene();
+
+	var shader = {
+
+		uniforms: {
+			tEquirect: { value: null },
+		},
+
+		vertexShader:
+
+			`
+			varying vec3 vWorldDirection;
+
+			//include <common>
+			vec3 transformDirection( in vec3 dir, in mat4 matrix ) {
+
+				return normalize( ( matrix * vec4( dir, 0.0 ) ).xyz );
+
+			}
+
+			void main() {
+
+				vWorldDirection = transformDirection( position, modelMatrix );
+
+				#include <begin_vertex>
+				#include <project_vertex>
+
+			}
+			`,
+
+		fragmentShader:
+
+			`
+			uniform sampler2D tEquirect;
+
+			varying vec3 vWorldDirection;
+
+			//include <common>
+			#define RECIPROCAL_PI 0.31830988618
+			#define RECIPROCAL_PI2 0.15915494
+
+			void main() {
+
+				vec3 direction = normalize( vWorldDirection );
+
+				vec2 sampleUV;
+
+				sampleUV.y = asin( clamp( direction.y, - 1.0, 1.0 ) ) * RECIPROCAL_PI + 0.5;
+
+				sampleUV.x = atan( direction.z, direction.x ) * RECIPROCAL_PI2 + 0.5;
+
+				gl_FragColor = texture2D( tEquirect, sampleUV );
+
+			}
+			`
+	};
+
+	var material = new THREE.ShaderMaterial( {
+
+		type: 'CubemapFromEquirect',
+
+		uniforms: THREE.UniformsUtils.clone( shader.uniforms ),
+		vertexShader: shader.vertexShader,
+		fragmentShader: shader.fragmentShader,
+		side: THREE.BackSide,
+		blending: THREE.NoBlending
+
+	} );
+
+	material.uniforms.tEquirect.value = texture;
+
+	var mesh = new THREE.Mesh( new THREE.BoxBufferGeometry( 5, 5, 5 ), material );
+
+	scene.add( mesh );
+
+	var resolution = options.resolution || 512;
+
+	var params = {
+		type: texture.type,
+		format: texture.format,
+		encoding: texture.encoding,
+		generateMipmaps: ( options.generateMipmaps !== undefined ) ? options.generateMipmaps : texture.generateMipmaps,
+		minFilter: ( options.minFilter !== undefined ) ? options.minFilter : texture.minFilter,
+		magFilter: ( options.magFilter !== undefined ) ? options.magFilter : texture.magFilter
+	};
+
+	var camera = new THREE.CubeCamera( 1, 10, resolution, params );
+
+	camera.update( this.renderer, scene );
+
+	mesh.geometry.dispose();
+	mesh.material.dispose();
+
+	return camera.renderTarget;
+
+};
+
+//
+
+THREE.EquirectangularToCubeGenerator = ( function () {
+
+	var camera = new THREE.PerspectiveCamera( 90, 1, 0.1, 10 );
+	var scene = new THREE.Scene();
+	var boxMesh = new THREE.Mesh( new THREE.BoxBufferGeometry( 1, 1, 1 ), getShader() );
+	boxMesh.material.side = THREE.BackSide;
+	scene.add( boxMesh );
+
+	var EquirectangularToCubeGenerator = function ( sourceTexture, options ) {
+
+		options = options || {};
+
+		this.sourceTexture = sourceTexture;
+		this.resolution = options.resolution || 512;
+
+		this.views = [
+			{ t: [ 1, 0, 0 ], u: [ 0, - 1, 0 ] },
+			{ t: [ - 1, 0, 0 ], u: [ 0, - 1, 0 ] },
+			{ t: [ 0, 1, 0 ], u: [ 0, 0, 1 ] },
+			{ t: [ 0, - 1, 0 ], u: [ 0, 0, - 1 ] },
+			{ t: [ 0, 0, 1 ], u: [ 0, - 1, 0 ] },
+			{ t: [ 0, 0, - 1 ], u: [ 0, - 1, 0 ] },
+		];
+
+		var params = {
+			format: options.format || this.sourceTexture.format,
+			magFilter: this.sourceTexture.magFilter,
+			minFilter: this.sourceTexture.minFilter,
+			type: options.type || this.sourceTexture.type,
+			generateMipmaps: this.sourceTexture.generateMipmaps,
+			anisotropy: this.sourceTexture.anisotropy,
+			encoding: this.sourceTexture.encoding
+		};
+
+		this.renderTarget = new THREE.WebGLRenderTargetCube( this.resolution, this.resolution, params );
+
+	};
+
+	EquirectangularToCubeGenerator.prototype = {
+
+		constructor: EquirectangularToCubeGenerator,
+
+		update: function ( renderer ) {
+
+			var currentRenderTarget = renderer.getRenderTarget();
+
+			boxMesh.material.uniforms.equirectangularMap.value = this.sourceTexture;
+
+			for ( var i = 0; i < 6; i ++ ) {
+
+				var v = this.views[ i ];
+
+				camera.position.set( 0, 0, 0 );
+				camera.up.set( v.u[ 0 ], v.u[ 1 ], v.u[ 2 ] );
+				camera.lookAt( v.t[ 0 ], v.t[ 1 ], v.t[ 2 ] );
+
+				renderer.setRenderTarget( this.renderTarget, i );
+				renderer.clear();
+				renderer.render( scene, camera );
+
+			}
+
+			renderer.setRenderTarget( currentRenderTarget );
+
+			return this.renderTarget.texture;
+
+		},
+
+		dispose: function () {
+
+			this.renderTarget.dispose();
+
+		}
+
+	};
+
+	function getShader() {
+
+		var shaderMaterial = new THREE.ShaderMaterial( {
+
+			uniforms: {
+				"equirectangularMap": { value: null },
+			},
+
+			vertexShader:
+        "varying vec3 localPosition;\n\
+        \n\
+        void main() {\n\
+          localPosition = position;\n\
+          gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n\
+        }",
+
+			fragmentShader:
+        "#include <common>\n\
+        varying vec3 localPosition;\n\
+        uniform sampler2D equirectangularMap;\n\
+        \n\
+        vec2 EquirectangularSampleUV(vec3 v) {\n\
+          vec2 uv = vec2(atan(v.z, v.x), asin(v.y));\n\
+          uv *= vec2(0.1591, 0.3183); // inverse atan\n\
+          uv += 0.5;\n\
+          return uv;\n\
+        }\n\
+        \n\
+        void main() {\n\
+          vec2 uv = EquirectangularSampleUV(normalize(localPosition));\n\
+          gl_FragColor = texture2D(equirectangularMap, uv);\n\
+        }",
+
+			blending: THREE.NoBlending
+
+		} );
+
+		shaderMaterial.type = 'EquirectangularToCubeGenerator';
+
+		return shaderMaterial;
+
+	}
+
+	return EquirectangularToCubeGenerator;
+
+} )();
+
+/**
+ * @author Nikos M. / https://github.com/foo123/
+ */
+
+// https://github.com/mrdoob/three.js/issues/5552
+// http://en.wikipedia.org/wiki/RGBE_image_format
+
+THREE.HDRLoader = THREE.RGBELoader = function ( manager ) {
+
+	this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
+	this.type = THREE.UnsignedByteType;
+
+};
+
+// extend THREE.DataTextureLoader
+THREE.RGBELoader.prototype = Object.create( THREE.DataTextureLoader.prototype );
+
+// adapted from http://www.graphics.cornell.edu/~bjw/rgbe.html
+THREE.RGBELoader.prototype._parser = function ( buffer ) {
+
+	var
+		/* return codes for rgbe routines */
+		RGBE_RETURN_SUCCESS = 0,
+		RGBE_RETURN_FAILURE = - 1,
+
+		/* default error routine.  change this to change error handling */
+		rgbe_read_error = 1,
+		rgbe_write_error = 2,
+		rgbe_format_error = 3,
+		rgbe_memory_error = 4,
+		rgbe_error = function ( rgbe_error_code, msg ) {
+
+			switch ( rgbe_error_code ) {
+
+				case rgbe_read_error: console.error( "THREE.RGBELoader Read Error: " + ( msg || '' ) );
+					break;
+				case rgbe_write_error: console.error( "THREE.RGBELoader Write Error: " + ( msg || '' ) );
+					break;
+				case rgbe_format_error: console.error( "THREE.RGBELoader Bad File Format: " + ( msg || '' ) );
+					break;
+				default:
+				case rgbe_memory_error: console.error( "THREE.RGBELoader: Error: " + ( msg || '' ) );
+
+			}
+			return RGBE_RETURN_FAILURE;
+
+		},
+
+		/* offsets to red, green, and blue components in a data (float) pixel */
+		RGBE_DATA_RED = 0,
+		RGBE_DATA_GREEN = 1,
+		RGBE_DATA_BLUE = 2,
+
+		/* number of floats per pixel, use 4 since stored in rgba image format */
+		RGBE_DATA_SIZE = 4,
+
+		/* flags indicating which fields in an rgbe_header_info are valid */
+		RGBE_VALID_PROGRAMTYPE = 1,
+		RGBE_VALID_FORMAT = 2,
+		RGBE_VALID_DIMENSIONS = 4,
+
+		NEWLINE = "\n",
+
+		fgets = function ( buffer, lineLimit, consume ) {
+
+			lineLimit = ! lineLimit ? 1024 : lineLimit;
+			var p = buffer.pos,
+				i = - 1, len = 0, s = '', chunkSize = 128,
+				chunk = String.fromCharCode.apply( null, new Uint16Array( buffer.subarray( p, p + chunkSize ) ) )
+			;
+			while ( ( 0 > ( i = chunk.indexOf( NEWLINE ) ) ) && ( len < lineLimit ) && ( p < buffer.byteLength ) ) {
+
+				s += chunk; len += chunk.length;
+				p += chunkSize;
+				chunk += String.fromCharCode.apply( null, new Uint16Array( buffer.subarray( p, p + chunkSize ) ) );
+
+			}
+
+			if ( - 1 < i ) {
+
+				/*for (i=l-1; i>=0; i--) {
+					byteCode = m.charCodeAt(i);
+					if (byteCode > 0x7f && byteCode <= 0x7ff) byteLen++;
+					else if (byteCode > 0x7ff && byteCode <= 0xffff) byteLen += 2;
+					if (byteCode >= 0xDC00 && byteCode <= 0xDFFF) i--; //trail surrogate
+				}*/
+				if ( false !== consume ) buffer.pos += len + i + 1;
+				return s + chunk.slice( 0, i );
+
+			}
+			return false;
+
+		},
+
+		/* minimal header reading.  modify if you want to parse more information */
+		RGBE_ReadHeader = function ( buffer ) {
+
+			var line, match,
+
+				// regexes to parse header info fields
+				magic_token_re = /^#\?(\S+)$/,
+				gamma_re = /^\s*GAMMA\s*=\s*(\d+(\.\d+)?)\s*$/,
+				exposure_re = /^\s*EXPOSURE\s*=\s*(\d+(\.\d+)?)\s*$/,
+				format_re = /^\s*FORMAT=(\S+)\s*$/,
+				dimensions_re = /^\s*\-Y\s+(\d+)\s+\+X\s+(\d+)\s*$/,
+
+				// RGBE format header struct
+				header = {
+
+					valid: 0, /* indicate which fields are valid */
+
+					string: '', /* the actual header string */
+
+					comments: '', /* comments found in header */
+
+					programtype: 'RGBE', /* listed at beginning of file to identify it after "#?". defaults to "RGBE" */
+
+					format: '', /* RGBE format, default 32-bit_rle_rgbe */
+
+					gamma: 1.0, /* image has already been gamma corrected with given gamma. defaults to 1.0 (no correction) */
+
+					exposure: 1.0, /* a value of 1.0 in an image corresponds to <exposure> watts/steradian/m^2. defaults to 1.0 */
+
+					width: 0, height: 0 /* image dimensions, width/height */
+
+				};
+
+			if ( buffer.pos >= buffer.byteLength || ! ( line = fgets( buffer ) ) ) {
+
+				return rgbe_error( rgbe_read_error, "no header found" );
+
+			}
+			/* if you want to require the magic token then uncomment the next line */
+			if ( ! ( match = line.match( magic_token_re ) ) ) {
+
+				return rgbe_error( rgbe_format_error, "bad initial token" );
+
+			}
+			header.valid |= RGBE_VALID_PROGRAMTYPE;
+			header.programtype = match[ 1 ];
+			header.string += line + "\n";
+
+			while ( true ) {
+
+				line = fgets( buffer );
+				if ( false === line ) break;
+				header.string += line + "\n";
+
+				if ( '#' === line.charAt( 0 ) ) {
+
+					header.comments += line + "\n";
+					continue; // comment line
+
+				}
+
+				if ( match = line.match( gamma_re ) ) {
+
+					header.gamma = parseFloat( match[ 1 ], 10 );
+
+				}
+				if ( match = line.match( exposure_re ) ) {
+
+					header.exposure = parseFloat( match[ 1 ], 10 );
+
+				}
+				if ( match = line.match( format_re ) ) {
+
+					header.valid |= RGBE_VALID_FORMAT;
+					header.format = match[ 1 ];//'32-bit_rle_rgbe';
+
+				}
+				if ( match = line.match( dimensions_re ) ) {
+
+					header.valid |= RGBE_VALID_DIMENSIONS;
+					header.height = parseInt( match[ 1 ], 10 );
+					header.width = parseInt( match[ 2 ], 10 );
+
+				}
+
+				if ( ( header.valid & RGBE_VALID_FORMAT ) && ( header.valid & RGBE_VALID_DIMENSIONS ) ) break;
+
+			}
+
+			if ( ! ( header.valid & RGBE_VALID_FORMAT ) ) {
+
+				return rgbe_error( rgbe_format_error, "missing format specifier" );
+
+			}
+			if ( ! ( header.valid & RGBE_VALID_DIMENSIONS ) ) {
+
+				return rgbe_error( rgbe_format_error, "missing image size specifier" );
+
+			}
+
+			return header;
+
+		},
+
+		RGBE_ReadPixels_RLE = function ( buffer, w, h ) {
+
+			var data_rgba, offset, pos, count, byteValue,
+				scanline_buffer, ptr, ptr_end, i, l, off, isEncodedRun,
+				scanline_width = w, num_scanlines = h, rgbeStart
+			;
+
+			if (
+				// run length encoding is not allowed so read flat
+				( ( scanline_width < 8 ) || ( scanline_width > 0x7fff ) ) ||
+				// this file is not run length encoded
+				( ( 2 !== buffer[ 0 ] ) || ( 2 !== buffer[ 1 ] ) || ( buffer[ 2 ] & 0x80 ) )
+			) {
+
+				// return the flat buffer
+				return new Uint8Array( buffer );
+
+			}
+
+			if ( scanline_width !== ( ( buffer[ 2 ] << 8 ) | buffer[ 3 ] ) ) {
+
+				return rgbe_error( rgbe_format_error, "wrong scanline width" );
+
+			}
+
+			data_rgba = new Uint8Array( 4 * w * h );
+
+			if ( ! data_rgba || ! data_rgba.length ) {
+
+				return rgbe_error( rgbe_memory_error, "unable to allocate buffer space" );
+
+			}
+
+			offset = 0; pos = 0; ptr_end = 4 * scanline_width;
+			rgbeStart = new Uint8Array( 4 );
+			scanline_buffer = new Uint8Array( ptr_end );
+
+			// read in each successive scanline
+			while ( ( num_scanlines > 0 ) && ( pos < buffer.byteLength ) ) {
+
+				if ( pos + 4 > buffer.byteLength ) {
+
+					return rgbe_error( rgbe_read_error );
+
+				}
+
+				rgbeStart[ 0 ] = buffer[ pos ++ ];
+				rgbeStart[ 1 ] = buffer[ pos ++ ];
+				rgbeStart[ 2 ] = buffer[ pos ++ ];
+				rgbeStart[ 3 ] = buffer[ pos ++ ];
+
+				if ( ( 2 != rgbeStart[ 0 ] ) || ( 2 != rgbeStart[ 1 ] ) || ( ( ( rgbeStart[ 2 ] << 8 ) | rgbeStart[ 3 ] ) != scanline_width ) ) {
+
+					return rgbe_error( rgbe_format_error, "bad rgbe scanline format" );
+
+				}
+
+				// read each of the four channels for the scanline into the buffer
+				// first red, then green, then blue, then exponent
+				ptr = 0;
+				while ( ( ptr < ptr_end ) && ( pos < buffer.byteLength ) ) {
+
+					count = buffer[ pos ++ ];
+					isEncodedRun = count > 128;
+					if ( isEncodedRun ) count -= 128;
+
+					if ( ( 0 === count ) || ( ptr + count > ptr_end ) ) {
+
+						return rgbe_error( rgbe_format_error, "bad scanline data" );
+
+					}
+
+					if ( isEncodedRun ) {
+
+						// a (encoded) run of the same value
+						byteValue = buffer[ pos ++ ];
+						for ( i = 0; i < count; i ++ ) {
+
+							scanline_buffer[ ptr ++ ] = byteValue;
+
+						}
+						//ptr += count;
+
+					} else {
+
+						// a literal-run
+						scanline_buffer.set( buffer.subarray( pos, pos + count ), ptr );
+						ptr += count; pos += count;
+
+					}
+
+				}
+
+
+				// now convert data from buffer into rgba
+				// first red, then green, then blue, then exponent (alpha)
+				l = scanline_width; //scanline_buffer.byteLength;
+				for ( i = 0; i < l; i ++ ) {
+
+					off = 0;
+					data_rgba[ offset ] = scanline_buffer[ i + off ];
+					off += scanline_width; //1;
+					data_rgba[ offset + 1 ] = scanline_buffer[ i + off ];
+					off += scanline_width; //1;
+					data_rgba[ offset + 2 ] = scanline_buffer[ i + off ];
+					off += scanline_width; //1;
+					data_rgba[ offset + 3 ] = scanline_buffer[ i + off ];
+					offset += 4;
+
+				}
+
+				num_scanlines --;
+
+			}
+
+			return data_rgba;
+
+		}
+	;
+
+	var byteArray = new Uint8Array( buffer ),
+		byteLength = byteArray.byteLength;
+	byteArray.pos = 0;
+	var rgbe_header_info = RGBE_ReadHeader( byteArray );
+
+	if ( RGBE_RETURN_FAILURE !== rgbe_header_info ) {
+
+		var w = rgbe_header_info.width,
+			h = rgbe_header_info.height,
+			image_rgba_data = RGBE_ReadPixels_RLE( byteArray.subarray( byteArray.pos ), w, h )
+		;
+		if ( RGBE_RETURN_FAILURE !== image_rgba_data ) {
+
+			if ( this.type === THREE.UnsignedByteType ) {
+
+				var data = image_rgba_data;
+				var format = THREE.RGBEFormat; // handled as THREE.RGBAFormat in shaders
+				var type = THREE.UnsignedByteType;
+
+			} else if ( this.type === THREE.FloatType ) {
+
+				var RGBEByteToRGBFloat = function ( sourceArray, sourceOffset, destArray, destOffset ) {
+
+					var e = sourceArray[ sourceOffset + 3 ];
+					var scale = Math.pow( 2.0, e - 128.0 ) / 255.0;
+
+					destArray[ destOffset + 0 ] = sourceArray[ sourceOffset + 0 ] * scale;
+					destArray[ destOffset + 1 ] = sourceArray[ sourceOffset + 1 ] * scale;
+					destArray[ destOffset + 2 ] = sourceArray[ sourceOffset + 2 ] * scale;
+
+				};
+
+				var numElements = ( image_rgba_data.length / 4 ) * 3;
+				var floatArray = new Float32Array( numElements );
+
+				for ( var j = 0; j < numElements; j ++ ) {
+
+					RGBEByteToRGBFloat( image_rgba_data, j * 4, floatArray, j * 3 );
+
+				}
+
+				var data = floatArray;
+				var format = THREE.RGBFormat;
+				var type = THREE.FloatType;
+
+
+			} else {
+
+				console.error( 'THREE.RGBELoader: unsupported type: ', this.type );
+
+			}
+
+			return {
+				width: w, height: h,
+				data: data,
+				header: rgbe_header_info.string,
+				gamma: rgbe_header_info.gamma,
+				exposure: rgbe_header_info.exposure,
+				format: format,
+				type: type
+			};
+
+		}
+
+	}
+
+	return null;
+
+};
+
+THREE.RGBELoader.prototype.setType = function ( value ) {
+
+	this.type = value;
+	return this;
+
+};
+
+
+
+/**
+ * @author mrdoob / http://mrdoob.com/
+ */
+
+THREE.BufferGeometryUtils = {
+
+	computeTangents: function ( geometry ) {
+
+		var index = geometry.index;
+		var attributes = geometry.attributes;
+
+		// based on http://www.terathon.com/code/tangent.html
+		// (per vertex tangents)
+
+		if ( index === null ||
+			 attributes.position === undefined ||
+			 attributes.normal === undefined ||
+			 attributes.uv === undefined ) {
+
+			console.warn( 'THREE.BufferGeometry: Missing required attributes (index, position, normal or uv) in BufferGeometry.computeTangents()' );
+			return;
+
+		}
+
+		var indices = index.array;
+		var positions = attributes.position.array;
+		var normals = attributes.normal.array;
+		var uvs = attributes.uv.array;
+
+		var nVertices = positions.length / 3;
+
+		if ( attributes.tangent === undefined ) {
+
+			geometry.addAttribute( 'tangent', new THREE.BufferAttribute( new Float32Array( 4 * nVertices ), 4 ) );
+
+		}
+
+		var tangents = attributes.tangent.array;
+
+		var tan1 = [], tan2 = [];
+
+		for ( var i = 0; i < nVertices; i ++ ) {
+
+			tan1[ i ] = new THREE.Vector3();
+			tan2[ i ] = new THREE.Vector3();
+
+		}
+
+		var vA = new THREE.Vector3(),
+			vB = new THREE.Vector3(),
+			vC = new THREE.Vector3(),
+
+			uvA = new THREE.Vector2(),
+			uvB = new THREE.Vector2(),
+			uvC = new THREE.Vector2(),
+
+			sdir = new THREE.Vector3(),
+			tdir = new THREE.Vector3();
+
+		function handleTriangle( a, b, c ) {
+
+			vA.fromArray( positions, a * 3 );
+			vB.fromArray( positions, b * 3 );
+			vC.fromArray( positions, c * 3 );
+
+			uvA.fromArray( uvs, a * 2 );
+			uvB.fromArray( uvs, b * 2 );
+			uvC.fromArray( uvs, c * 2 );
+
+			var x1 = vB.x - vA.x;
+			var x2 = vC.x - vA.x;
+
+			var y1 = vB.y - vA.y;
+			var y2 = vC.y - vA.y;
+
+			var z1 = vB.z - vA.z;
+			var z2 = vC.z - vA.z;
+
+			var s1 = uvB.x - uvA.x;
+			var s2 = uvC.x - uvA.x;
+
+			var t1 = uvB.y - uvA.y;
+			var t2 = uvC.y - uvA.y;
+
+			var r = 1.0 / ( s1 * t2 - s2 * t1 );
+
+			sdir.set(
+				( t2 * x1 - t1 * x2 ) * r,
+				( t2 * y1 - t1 * y2 ) * r,
+				( t2 * z1 - t1 * z2 ) * r
+			);
+
+			tdir.set(
+				( s1 * x2 - s2 * x1 ) * r,
+				( s1 * y2 - s2 * y1 ) * r,
+				( s1 * z2 - s2 * z1 ) * r
+			);
+
+			tan1[ a ].add( sdir );
+			tan1[ b ].add( sdir );
+			tan1[ c ].add( sdir );
+
+			tan2[ a ].add( tdir );
+			tan2[ b ].add( tdir );
+			tan2[ c ].add( tdir );
+
+		}
+
+		var groups = geometry.groups;
+
+		if ( groups.length === 0 ) {
+
+			groups = [ {
+				start: 0,
+				count: indices.length
+			} ];
+
+		}
+
+		for ( var i = 0, il = groups.length; i < il; ++ i ) {
+
+			var group = groups[ i ];
+
+			var start = group.start;
+			var count = group.count;
+
+			for ( var j = start, jl = start + count; j < jl; j += 3 ) {
+
+				handleTriangle(
+					indices[ j + 0 ],
+					indices[ j + 1 ],
+					indices[ j + 2 ]
+				);
+
+			}
+
+		}
+
+		var tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3();
+		var n = new THREE.Vector3(), n2 = new THREE.Vector3();
+		var w, t, test;
+
+		function handleVertex( v ) {
+
+			n.fromArray( normals, v * 3 );
+			n2.copy( n );
+
+			t = tan1[ v ];
+
+			// Gram-Schmidt orthogonalize
+
+			tmp.copy( t );
+			tmp.sub( n.multiplyScalar( n.dot( t ) ) ).normalize();
+
+			// Calculate handedness
+
+			tmp2.crossVectors( n2, t );
+			test = tmp2.dot( tan2[ v ] );
+			w = ( test < 0.0 ) ? - 1.0 : 1.0;
+
+			tangents[ v * 4 ] = tmp.x;
+			tangents[ v * 4 + 1 ] = tmp.y;
+			tangents[ v * 4 + 2 ] = tmp.z;
+			tangents[ v * 4 + 3 ] = w;
+
+		}
+
+		for ( var i = 0, il = groups.length; i < il; ++ i ) {
+
+			var group = groups[ i ];
+
+			var start = group.start;
+			var count = group.count;
+
+			for ( var j = start, jl = start + count; j < jl; j += 3 ) {
+
+				handleVertex( indices[ j + 0 ] );
+				handleVertex( indices[ j + 1 ] );
+				handleVertex( indices[ j + 2 ] );
+
+			}
+
+		}
+
+	},
+
+	/**
+	 * @param  {Array<THREE.BufferGeometry>} geometries
+	 * @param  {Boolean} useGroups
+	 * @return {THREE.BufferGeometry}
+	 */
+	mergeBufferGeometries: function ( geometries, useGroups ) {
+
+		var isIndexed = geometries[ 0 ].index !== null;
+
+		var attributesUsed = new Set( Object.keys( geometries[ 0 ].attributes ) );
+		var morphAttributesUsed = new Set( Object.keys( geometries[ 0 ].morphAttributes ) );
+
+		var attributes = {};
+		var morphAttributes = {};
+
+		var mergedGeometry = new THREE.BufferGeometry();
+
+		var offset = 0;
+
+		for ( var i = 0; i < geometries.length; ++ i ) {
+
+			var geometry = geometries[ i ];
+
+			// ensure that all geometries are indexed, or none
+
+			if ( isIndexed !== ( geometry.index !== null ) ) return null;
+
+			// gather attributes, exit early if they're different
+
+			for ( var name in geometry.attributes ) {
+
+				if ( ! attributesUsed.has( name ) ) return null;
+
+				if ( attributes[ name ] === undefined ) attributes[ name ] = [];
+
+				attributes[ name ].push( geometry.attributes[ name ] );
+
+			}
+
+			// gather morph attributes, exit early if they're different
+
+			for ( var name in geometry.morphAttributes ) {
+
+				if ( ! morphAttributesUsed.has( name ) ) return null;
+
+				if ( morphAttributes[ name ] === undefined ) morphAttributes[ name ] = [];
+
+				morphAttributes[ name ].push( geometry.morphAttributes[ name ] );
+
+			}
+
+			// gather .userData
+
+			mergedGeometry.userData.mergedUserData = mergedGeometry.userData.mergedUserData || [];
+			mergedGeometry.userData.mergedUserData.push( geometry.userData );
+
+			if ( useGroups ) {
+
+				var count;
+
+				if ( isIndexed ) {
+
+					count = geometry.index.count;
+
+				} else if ( geometry.attributes.position !== undefined ) {
+
+					count = geometry.attributes.position.count;
+
+				} else {
+
+					return null;
+
+				}
+
+				mergedGeometry.addGroup( offset, count, i );
+
+				offset += count;
+
+			}
+
+		}
+
+		// merge indices
+
+		if ( isIndexed ) {
+
+			var indexOffset = 0;
+			var mergedIndex = [];
+
+			for ( var i = 0; i < geometries.length; ++ i ) {
+
+				var index = geometries[ i ].index;
+
+				for ( var j = 0; j < index.count; ++ j ) {
+
+					mergedIndex.push( index.getX( j ) + indexOffset );
+
+				}
+
+				indexOffset += geometries[ i ].attributes.position.count;
+
+			}
+
+			mergedGeometry.setIndex( mergedIndex );
+
+		}
+
+		// merge attributes
+
+		for ( var name in attributes ) {
+
+			var mergedAttribute = this.mergeBufferAttributes( attributes[ name ] );
+
+			if ( ! mergedAttribute ) return null;
+
+			mergedGeometry.addAttribute( name, mergedAttribute );
+
+		}
+
+		// merge morph attributes
+
+		for ( var name in morphAttributes ) {
+
+			var numMorphTargets = morphAttributes[ name ][ 0 ].length;
+
+			if ( numMorphTargets === 0 ) break;
+
+			mergedGeometry.morphAttributes = mergedGeometry.morphAttributes || {};
+			mergedGeometry.morphAttributes[ name ] = [];
+
+			for ( var i = 0; i < numMorphTargets; ++ i ) {
+
+				var morphAttributesToMerge = [];
+
+				for ( var j = 0; j < morphAttributes[ name ].length; ++ j ) {
+
+					morphAttributesToMerge.push( morphAttributes[ name ][ j ][ i ] );
+
+				}
+
+				var mergedMorphAttribute = this.mergeBufferAttributes( morphAttributesToMerge );
+
+				if ( ! mergedMorphAttribute ) return null;
+
+				mergedGeometry.morphAttributes[ name ].push( mergedMorphAttribute );
+
+			}
+
+		}
+
+		return mergedGeometry;
+
+	},
+
+	/**
+	 * @param {Array<THREE.BufferAttribute>} attributes
+	 * @return {THREE.BufferAttribute}
+	 */
+	mergeBufferAttributes: function ( attributes ) {
+
+		var TypedArray;
+		var itemSize;
+		var normalized;
+		var arrayLength = 0;
+
+		for ( var i = 0; i < attributes.length; ++ i ) {
+
+			var attribute = attributes[ i ];
+
+			if ( attribute.isInterleavedBufferAttribute ) return null;
+
+			if ( TypedArray === undefined ) TypedArray = attribute.array.constructor;
+			if ( TypedArray !== attribute.array.constructor ) return null;
+
+			if ( itemSize === undefined ) itemSize = attribute.itemSize;
+			if ( itemSize !== attribute.itemSize ) return null;
+
+			if ( normalized === undefined ) normalized = attribute.normalized;
+			if ( normalized !== attribute.normalized ) return null;
+
+			arrayLength += attribute.array.length;
+
+		}
+
+		var array = new TypedArray( arrayLength );
+		var offset = 0;
+
+		for ( var i = 0; i < attributes.length; ++ i ) {
+
+			array.set( attributes[ i ].array, offset );
+
+			offset += attributes[ i ].array.length;
+
+		}
+
+		return new THREE.BufferAttribute( array, itemSize, normalized );
+
+	},
+
+	/**
+	 * @param {Array<THREE.BufferAttribute>} attributes
+	 * @return {Array<THREE.InterleavedBufferAttribute>}
+	 */
+	interleaveAttributes: function ( attributes ) {
+
+		// Interleaves the provided attributes into an InterleavedBuffer and returns
+		// a set of InterleavedBufferAttributes for each attribute
+		var TypedArray;
+		var arrayLength = 0;
+		var stride = 0;
+
+		// calculate the the length and type of the interleavedBuffer
+		for ( var i = 0, l = attributes.length; i < l; ++ i ) {
+
+			var attribute = attributes[ i ];
+
+			if ( TypedArray === undefined ) TypedArray = attribute.array.constructor;
+			if ( TypedArray !== attribute.array.constructor ) {
+
+				console.warn( 'AttributeBuffers of different types cannot be interleaved' );
+				return null;
+
+			}
+
+			arrayLength += attribute.array.length;
+			stride += attribute.itemSize;
+
+		}
+
+		// Create the set of buffer attributes
+		var interleavedBuffer = new THREE.InterleavedBuffer( new TypedArray( arrayLength ), stride );
+		var offset = 0;
+		var res = [];
+		var getters = [ 'getX', 'getY', 'getZ', 'getW' ];
+		var setters = [ 'setX', 'setY', 'setZ', 'setW' ];
+
+		for ( var j = 0, l = attributes.length; j < l; j ++ ) {
+
+			var attribute = attributes[ j ];
+			var itemSize = attribute.itemSize;
+			var count = attribute.count;
+			var iba = new THREE.InterleavedBufferAttribute( interleavedBuffer, itemSize, offset, attribute.normalized );
+			res.push( iba );
+
+			offset += itemSize;
+
+			// Move the data for each attribute into the new interleavedBuffer
+			// at the appropriate offset
+			for ( var c = 0; c < count; c ++ ) {
+
+				for ( var k = 0; k < itemSize; k ++ ) {
+
+					iba[ setters[ k ] ]( c, attribute[ getters[ k ] ]( c ) );
+
+				}
+
+			}
+
+		}
+
+		return res;
+
+	},
+
+	/**
+	 * @param {Array<THREE.BufferGeometry>} geometry
+	 * @return {number}
+	 */
+	estimateBytesUsed: function ( geometry ) {
+
+		// Return the estimated memory used by this geometry in bytes
+		// Calculate using itemSize, count, and BYTES_PER_ELEMENT to account
+		// for InterleavedBufferAttributes.
+		var mem = 0;
+		for ( var name in geometry.attributes ) {
+
+			var attr = geometry.getAttribute( name );
+			mem += attr.count * attr.itemSize * attr.array.BYTES_PER_ELEMENT;
+
+		}
+
+		var indices = geometry.getIndex();
+		mem += indices ? indices.count * indices.itemSize * indices.array.BYTES_PER_ELEMENT : 0;
+		return mem;
+
+	},
+
+	/**
+	 * @param {THREE.BufferGeometry} geometry
+	 * @param {number} tolerance
+	 * @return {THREE.BufferGeometry>}
+	 */
+	mergeVertices: function ( geometry, tolerance = 1e-4 ) {
+
+		tolerance = Math.max( tolerance, Number.EPSILON );
+
+		// Generate an index buffer if the geometry doesn't have one, or optimize it
+		// if it's already available.
+		var hashToIndex = {};
+		var indices = geometry.getIndex();
+		var positions = geometry.getAttribute( 'position' );
+		var vertexCount = indices ? indices.count : positions.count;
+
+		// next value for triangle indices
+		var nextIndex = 0;
+
+		// attributes and new attribute arrays
+		var attributeNames = Object.keys( geometry.attributes );
+		var attrArrays = {};
+		var morphAttrsArrays = {};
+		var newIndices = [];
+		var getters = [ 'getX', 'getY', 'getZ', 'getW' ];
+
+		// initialize the arrays
+		for ( var i = 0, l = attributeNames.length; i < l; i ++ ) {
+			var name = attributeNames[ i ];
+
+			attrArrays[ name ] = [];
+
+			var morphAttr = geometry.morphAttributes[ name ];
+			if ( morphAttr ) {
+
+				morphAttrsArrays[ name ] = new Array( morphAttr.length ).fill().map( () => [] );
+
+			}
+
+		}
+
+		// convert the error tolerance to an amount of decimal places to truncate to
+		var decimalShift = Math.log10( 1 / tolerance );
+		var shiftMultiplier = Math.pow( 10, decimalShift );
+		for ( var i = 0; i < vertexCount; i ++ ) {
+
+			var index = indices ? indices.getX( i ) : i;
+
+			// Generate a hash for the vertex attributes at the current index 'i'
+			var hash = '';
+			for ( var j = 0, l = attributeNames.length; j < l; j ++ ) {
+
+				var name = attributeNames[ j ];
+				var attribute = geometry.getAttribute( name );
+				var itemSize = attribute.itemSize;
+
+				for ( var k = 0; k < itemSize; k ++ ) {
+
+					// double tilde truncates the decimal value
+					hash += `${ ~ ~ ( attribute[ getters[ k ] ]( index ) * shiftMultiplier ) },`;
+
+				}
+
+			}
+
+			// Add another reference to the vertex if it's already
+			// used by another index
+			if ( hash in hashToIndex ) {
+
+				newIndices.push( hashToIndex[ hash ] );
+
+			} else {
+
+				// copy data to the new index in the attribute arrays
+				for ( var j = 0, l = attributeNames.length; j < l; j ++ ) {
+
+					var name = attributeNames[ j ];
+					var attribute = geometry.getAttribute( name );
+					var morphAttr = geometry.morphAttributes[ name ];
+					var itemSize = attribute.itemSize;
+					var newarray = attrArrays[ name ];
+					var newMorphArrays = morphAttrsArrays[ name ];
+
+					for ( var k = 0; k < itemSize; k ++ ) {
+
+						var getterFunc = getters[ k ];
+						newarray.push( attribute[ getterFunc ]( index ) );
+
+						if ( morphAttr ) {
+
+							for ( var m = 0, ml = morphAttr.length; m < ml; m ++ ) {
+
+								newMorphArrays[ m ].push( morphAttr[ m ][ getterFunc ]( index ) );
+
+							}
+
+						}
+
+					}
+
+				}
+
+				hashToIndex[ hash ] = nextIndex;
+				newIndices.push( nextIndex );
+				nextIndex ++;
+
+			}
+
+		}
+
+		// Generate typed arrays from new attribute arrays and update
+		// the attributeBuffers
+		const result = geometry.clone();
+		for ( var i = 0, l = attributeNames.length; i < l; i ++ ) {
+
+			var name = attributeNames[ i ];
+			var oldAttribute = geometry.getAttribute( name );
+			var attribute;
+
+			var buffer = new oldAttribute.array.constructor( attrArrays[ name ] );
+			if ( oldAttribute.isInterleavedBufferAttribute ) {
+
+				attribute = new THREE.BufferAttribute( buffer, oldAttribute.itemSize, oldAttribute.itemSize );
+
+			} else {
+
+				attribute = geometry.getAttribute( name ).clone();
+				attribute.setArray( buffer );
+
+			}
+
+			result.addAttribute( name, attribute );
+
+			// Update the attribute arrays
+			if ( name in morphAttrsArrays ) {
+
+				for ( var j = 0; j < morphAttrsArrays[ name ].length; j ++ ) {
+
+					var morphAttribute = geometry.morphAttributes[ name ][ j ].clone();
+					morphAttribute.setArray( new morphAttribute.array.constructor( morphAttrsArrays[ name ][ j ] ) );
+					result.morphAttributes[ name ][ j ] = morphAttribute;
+
+				}
+
+			}
+
+		}
+
+		// Generate an index buffer typed array
+		var cons = Uint8Array;
+		if ( newIndices.length >= Math.pow( 2, 8 ) ) cons = Uint16Array;
+		if ( newIndices.length >= Math.pow( 2, 16 ) ) cons = Uint32Array;
+
+		var newIndexBuffer = new cons( newIndices );
+		var newIndices = null;
+		if ( indices === null ) {
+
+			newIndices = new THREE.BufferAttribute( newIndexBuffer, 1 );
+
+		} else {
+
+			newIndices = geometry.getIndex().clone();
+			newIndices.setArray( newIndexBuffer );
+
+		}
+
+		result.setIndex( newIndices );
+
+		return result;
+
+	}
+
+};
