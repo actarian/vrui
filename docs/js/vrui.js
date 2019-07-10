@@ -728,7 +728,7 @@ function (_Controller) {
 
       var format = '.fbx'; // '.obj';
 
-      var path = "".concat(HandController.FOLDER, "/").concat(hand, "/").concat(hand, "-animated");
+      var path = "".concat(HandController.FOLDER, "/").concat(hand, "/").concat(hand, "-animated_");
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg'); // const texture = new THREE.TextureLoader().load(`${path}.jpg`);
 
       var material = new THREE.MeshMatcapMaterial({
@@ -763,7 +763,7 @@ function (_Controller) {
       }, function (xhr) {
         _this.progress = xhr.loaded / xhr.total;
       }, function (error) {
-        console.log("HandController.addModel not found ".concat(path, ".obj"));
+        console.log("HandController.addModel not found ".concat(path).concat(format));
       });
       return mesh;
     }
@@ -999,7 +999,7 @@ function (_Controller) {
       }, function (xhr) {
         _this.progress = xhr.loaded / xhr.total;
       }, function (error) {
-        console.log("OculusQuestController.addModel not found ".concat(path, ".obj"));
+        console.log("OculusQuestController.addModel not found ".concat(path).concat(format));
       });
       return mesh;
     }

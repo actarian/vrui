@@ -114,7 +114,7 @@ export default class OculusQuestController extends Controller {
 		}, (xhr) => {
 			this.progress = xhr.loaded / xhr.total;
 		}, (error) => {
-			console.log(`OculusQuestController.addModel not found ${path}.obj`);
+			console.log(`OculusQuestController.addModel not found ${path}${format}`);
 		});
 		return mesh;
 	}

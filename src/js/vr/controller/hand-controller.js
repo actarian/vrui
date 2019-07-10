@@ -14,7 +14,7 @@ export default class HandController extends Controller {
 
 	addModel(hand) {
 		const format = '.fbx'; // '.obj';
-		const path = `${HandController.FOLDER}/${hand}/${hand}-animated`;
+		const path = `${HandController.FOLDER}/${hand}/${hand}-animated_`;
 		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
 		// const texture = new THREE.TextureLoader().load(`${path}.jpg`);
 		const material = new THREE.MeshMatcapMaterial({
@@ -49,7 +49,7 @@ export default class HandController extends Controller {
 		}, (xhr) => {
 			this.progress = xhr.loaded / xhr.total;
 		}, (error) => {
-			console.log(`HandController.addModel not found ${path}.obj`);
+			console.log(`HandController.addModel not found ${path}${format}`);
 		});
 		return mesh;
 	}
