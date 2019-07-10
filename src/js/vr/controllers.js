@@ -95,6 +95,13 @@ export default class Controllers extends Emittable {
 	}
 
 	addEvents() {
+		this.onConnect = this.onConnect.bind(this);
+		this.onDisconnect = this.onDisconnect.bind(this);
+		this.onActivate = this.onActivate.bind(this);
+		this.onPress = this.onPress.bind(this);
+		this.onRelease = this.onRelease.bind(this);
+		this.onAxis = this.onAxis.bind(this);
+		this.onBroadcast = this.onBroadcast.bind(this);
 		const gamepads = this.gamepads;
 		gamepads.on('connect', this.onConnect);
 		gamepads.on('disconnect', this.onDisconnect);

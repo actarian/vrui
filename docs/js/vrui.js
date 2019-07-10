@@ -545,9 +545,14 @@ function (_THREE$Group) {
   _createClass(Controller, [{
     key: "addEvents",
     value: function addEvents() {
+      this.onActivate = this.onActivate.bind(this);
+      this.onDeactivate = this.onDeactivate.bind(this);
+      this.onPress = this.onPress.bind(this);
+      this.onRelease = this.onRelease.bind(this);
+      this.onAxis = this.onAxis.bind(this);
       var gamepad = this.gamepad;
       gamepad.on('activate', this.onActivate);
-      gamepad.on('deactivate', this.onActivate);
+      gamepad.on('deactivate', this.onDeactivate);
       gamepad.on('press', this.onPress);
       gamepad.on('release', this.onRelease);
       gamepad.on('axis', this.onAxis);
@@ -1179,6 +1184,13 @@ function (_Emittable) {
   }, {
     key: "addEvents",
     value: function addEvents() {
+      this.onConnect = this.onConnect.bind(this);
+      this.onDisconnect = this.onDisconnect.bind(this);
+      this.onActivate = this.onActivate.bind(this);
+      this.onPress = this.onPress.bind(this);
+      this.onRelease = this.onRelease.bind(this);
+      this.onAxis = this.onAxis.bind(this);
+      this.onBroadcast = this.onBroadcast.bind(this);
       var gamepads = this.gamepads;
       gamepads.on('connect', this.onConnect);
       gamepads.on('disconnect', this.onDisconnect);

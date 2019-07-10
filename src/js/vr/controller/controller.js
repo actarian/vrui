@@ -40,9 +40,14 @@ export default class Controller extends THREE.Group {
 	}
 
 	addEvents() {
+		this.onActivate = this.onActivate.bind(this);
+		this.onDeactivate = this.onDeactivate.bind(this);
+		this.onPress = this.onPress.bind(this);
+		this.onRelease = this.onRelease.bind(this);
+		this.onAxis = this.onAxis.bind(this);
 		const gamepad = this.gamepad;
 		gamepad.on('activate', this.onActivate);
-		gamepad.on('deactivate', this.onActivate);
+		gamepad.on('deactivate', this.onDeactivate);
 		gamepad.on('press', this.onPress);
 		gamepad.on('release', this.onRelease);
 		gamepad.on('axis', this.onAxis);
