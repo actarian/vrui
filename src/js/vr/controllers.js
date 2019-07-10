@@ -3,26 +3,40 @@
 
 import { POINTER_RADIUS, TEST_ENABLED } from '../const';
 import Emittable from '../interactive/emittable';
-// import Controller from './controller/controller';
+import Controller from './controller/controller';
+import HandController from './controller/hand-controller';
 import OculusQuestController from './controller/oculus-quest-controller';
-// import HandController from './controller/hand-controller';
 import Gamepads, { GAMEPAD_HANDS } from './gamepads';
+
+const CONTROLLERS = {
+	DEFAULT: Controller,
+	OCULUS_QUEST: OculusQuestController,
+	HAND: HandController,
+};
 
 export default class Controllers extends Emittable {
 
-	constructor(renderer, scene) {
+	constructor(renderer, scene, options = {}) {
 		super();
 		this.tick = 0;
 		this.controllers_ = {};
 		this.gamepads_ = {};
 		this.renderer = renderer;
 		this.scene = scene;
+		this.options = Object.assign({
+			debug: false,
+			test: TEST_ENABLED,
+		}, options);
 		this.direction = new THREE.Vector3();
-		const text = this.text = this.addText_(scene);
+		if (this.options.debug) {
+			this.text = this.addText_(scene);
+		}
 		const gamepads = this.gamepads = this.addGamepads_();
 		this.addTestController_();
+		this.addEvents();
 	}
 
+	/*
 	get controller() {
 		return this.controller_;
 	}
@@ -36,6 +50,7 @@ export default class Controllers extends Emittable {
 			controller.active = true;
 		}
 	}
+	*/
 
 	get gamepad() {
 		return this.gamepad_;
@@ -73,73 +88,58 @@ export default class Controllers extends Emittable {
 	}
 
 	addGamepads_() {
-		const gamepads = this.gamepads = new Gamepads((text) => {
-			this.setText(text);
-		});
-		gamepads.on('connect', (gamepad) => {
-			// console.log('connect', gamepad);
-			this.setText(`connect ${gamepad.hand} ${gamepad.index}`);
-			const controller = this.addController_(this.renderer, this.scene, gamepad);
-			if (gamepad.hand === GAMEPAD_HANDS.LEFT) {
-				this.left = controller;
-			} else {
-				this.right = controller;
-			}
-		});
-		gamepads.on('disconnect', (gamepad) => {
-			// console.log('disconnect', gamepad);
-			this.setText(`disconnect ${gamepad.hand} ${gamepad.index}`);
-			this.removeController_(gamepad);
-		});
-		gamepads.on('hand', (gamepad) => {
-			this.gamepad = gamepad;
-		});
-		gamepads.on('press', (button) => {
-			// console.log('press', press);
-			this.setText(`press ${button.gamepad.hand} ${button.index}`);
-			switch (button.gamepad.hand) {
-				case GAMEPAD_HANDS.LEFT:
-					// 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
-					/*
-					switch (button.index) {
-						case 1:
-							break;
-						case 2:
-							break;
-						case 3:
-							break;
-					}
-					*/
-					break;
-				case GAMEPAD_HANDS.RIGHT:
-					// 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
-					break;
-			}
-			const controller = this.controllers_[button.gamepad.index];
-			if (controller) {
-				controller.press(button.index);
-			}
-		});
-		gamepads.on('release', (button) => {
-			// console.log('release', button);
-			// this.setText(`release ${button.gamepad.hand} ${button.index}`);
-			const controller = this.controllers_[button.gamepad.index];
-			if (controller) {
-				controller.release(button.index);
-			}
-		});
-		gamepads.on('axis', (axis) => {
-			// console.log('axis', axis);
-			// this.setText(`axis ${axis.gamepad.hand} ${axis.index} { x:${axis.x}, y:${axis.y} }`);
-			const controller = this.controllers_[axis.gamepad.index];
-			if (controller) {
-				controller.axis[axis.index] = axis;
-			}
-		});
-		gamepads.on('broadcast', (type, event) => {
-			this.emit(type, event);
+		const gamepads = new Gamepads((message, object) => {
+			this.log(message, object);
 		});
 		return gamepads;
+	}
+
+	addEvents() {
+		const gamepads = this.gamepads;
+		gamepads.on('connect', this.onConnect);
+		gamepads.on('disconnect', this.onDisconnect);
+		gamepads.on('activate', this.onActivate);
+		gamepads.on('press', this.onPress);
+		gamepads.on('release', this.onRelease);
+		gamepads.on('axis', this.onAxis);
+		gamepads.on('broadcast', this.onBroadcast);
+	}
+	removeEvents() {
+		const gamepads = this.gamepads;
+		gamepads.off('connect', this.onConnect);
+		gamepads.off('disconnect', this.onDisconnect);
+		gamepads.off('activate', this.onActivate);
+		gamepads.off('press', this.onPress);
+		gamepads.off('release', this.onRelease);
+		gamepads.off('axis', this.onAxis);
+		gamepads.off('broadcast', this.onBroadcast);
+	}
+	onConnect(gamepad) {
+		this.log(`connect ${gamepad.hand} ${gamepad.index}`, gamepad);
+		const controller = this.addController_(this.renderer, this.scene, gamepad);
+	}
+	onDisconnect(gamepad) {
+		this.log(`disconnect ${gamepad.hand} ${gamepad.index}`, gamepad);
+		this.removeController_(gamepad);
+	}
+	onActivate(gamepad) {
+		this.gamepad = gamepad;
+	}
+	onPress(button) {
+		this.log(`press ${button.gamepad.hand} ${button.index}`, button);
+	}
+	onRelease(button) {
+		// this.log(`release ${button.gamepad.hand} ${button.index}`, button);
+	}
+	onAxis(axis) {
+		// this.log(`axis ${axis.gamepad.hand} ${axis.index} { x:${axis.x}, y:${axis.y} }`, axis);
+	}
+	onBroadcast(type, event) {
+		this.emit(type, event);
+	}
+	destroy() {
+		this.removeEvents();
+		this.gamepads = null;
 	}
 
 	addController_(renderer, scene, gamepad) {
@@ -147,7 +147,7 @@ export default class Controllers extends Emittable {
 		let controller = this.controllers_[index];
 		if (!controller) {
 			const pivot = renderer.vr.getController(index);
-			controller = new OculusQuestController(pivot, gamepad.hand);
+			controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
 			this.controllers_[index] = controller;
 			scene.add(pivot);
 		}
@@ -165,30 +165,45 @@ export default class Controllers extends Emittable {
 	}
 
 	addTestController_() {
-		if (TEST_ENABLED) {
-			// const controller = new Controller(this.scene, GAMEPAD_HANDS.RIGHT);
-			const controller = new OculusQuestController(this.scene, GAMEPAD_HANDS.RIGHT);
-			// const controller = new HandController(this.scene, GAMEPAD_HANDS.RIGHT);
-			// controller.scale.set(15, 15, 15);
+		if (this.options.test) {
+			const gamepad = new Emittable({ hand: GAMEPAD_HANDS.RIGHT });
+			// const controller = new CONTROLLERS.DEFAULT(this.scene, gamepad, this.options);
+			// const controller = new CONTROLLERS.OCULUS_QUEST(this.scene, gamepad, this.options);
+			const controller = new CONTROLLERS.HAND(this.scene, gamepad, this.options);
+			controller.scale.set(4, 4, 4);
 			controller.position.set(0, 1, -2);
 			this.controller = controller;
 			this.controllers_[0] = controller;
 			this.mouse = { x: 0, y: 0 };
+			this.onMouseUp = this.onMouseUp.bind(this);
+			this.onMouseDown = this.onMouseDown.bind(this);
 			this.onMouseMove = this.onMouseMove.bind(this);
+			window.addEventListener('mousedown', this.onMouseDown);
+			window.addEventListener('mouseup', this.onMouseUp);
 			window.addEventListener('mousemove', this.onMouseMove);
 		}
 	}
 
-	onMouseMove(event) {
-		try {
-			const w2 = window.innerWidth / 2;
-			const h2 = window.innerHeight / 2;
-			this.mouse.x = (event.clientX - w2) / w2;
-			this.mouse.y = -(event.clientY - h2) / h2;
-			this.updateTest(this.mouse);
-		} catch (error) {
-
+	onMouseDown(event) {
+		const controller = this.controller;
+		if (controller) {
+			controller.press(1);
 		}
+	}
+
+	onMouseUp(event) {
+		const controller = this.controller;
+		if (controller) {
+			controller.release(1);
+		}
+	}
+
+	onMouseMove(event) {
+		const w2 = window.innerWidth / 2;
+		const h2 = window.innerHeight / 2;
+		this.mouse.x = (event.clientX - w2) / w2;
+		this.mouse.y = -(event.clientY - h2) / h2;
+		this.updateTest(this.mouse);
 	}
 
 	updateTest(mouse) {
@@ -196,6 +211,13 @@ export default class Controllers extends Emittable {
 		if (controller) {
 			controller.rotation.y = -mouse.x * Math.PI;
 			controller.rotation.x = mouse.y * Math.PI / 2;
+		}
+	}
+
+	log(message) {
+		if (this.options.debug) {
+			console.log(message, object);
+			this.setText(message);
 		}
 	}
 
@@ -214,22 +236,23 @@ export default class Controllers extends Emittable {
 	}
 
 	setText(message) {
-		message = message || '1';
-		if (this.text) {
-			this.text.parent.remove(this.text);
-			this.text.geometry.dispose();
-		}
-		if (this.font) {
-			// console.log(this.font.generateShapes);
-			const shapes = this.font.generateShapes(message, 5);
-			const geometry = new THREE.ShapeBufferGeometry(shapes);
-			geometry.computeBoundingBox();
-			const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-			geometry.translate(x, 0, 0);
-			const text = new THREE.Mesh(geometry, this.fontMaterial);
-			text.position.set(0, 0, -POINTER_RADIUS);
-			this.text = text;
-			this.scene.add(text);
+		if (this.options.debug) {
+			message = message || '1';
+			if (this.text) {
+				this.text.parent.remove(this.text);
+				this.text.geometry.dispose();
+			}
+			if (this.font) {
+				const shapes = this.font.generateShapes(message, 5);
+				const geometry = new THREE.ShapeBufferGeometry(shapes);
+				geometry.computeBoundingBox();
+				const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+				geometry.translate(x, 0, 0);
+				const text = new THREE.Mesh(geometry, this.fontMaterial);
+				text.position.set(0, 0, -POINTER_RADIUS);
+				this.text = text;
+				this.scene.add(text);
+			}
 		}
 	}
 

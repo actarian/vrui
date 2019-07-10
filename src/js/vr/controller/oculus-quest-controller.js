@@ -1,7 +1,7 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import { cm, deg, mm, TEST_ENABLED } from '../../const';
+import { cm, deg, mm } from '../../const';
 import { GAMEPAD_HANDS } from '../gamepads';
 import Controller from './controller';
 import { ControllerFragGlsl } from './controller-frag.glsl';
@@ -11,8 +11,8 @@ const ON = new THREE.Color(0x2196f3);
 
 export default class OculusQuestController extends Controller {
 
-	constructor(parent, hand) {
-		super(parent, hand);
+	constructor(parent, gamepad, options = {}) {
+		super(parent, gamepad, options);
 	}
 
 	addModel(hand) {
@@ -133,11 +133,7 @@ export default class OculusQuestController extends Controller {
 	}
 
 	update(tick) {
-		this.test(tick);
-	}
-
-	test(tick) {
-		if (TEST_ENABLED && this.ready) {
+		if (this.options.test && this.ready) {
 			this.axis[0].x = Controller.getCos(tick, 0);
 			this.axis[0].y = Controller.getCos(tick, 1);
 			this.buttons[1].value = Math.abs(Controller.getCos(tick, 1));

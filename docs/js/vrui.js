@@ -13,7 +13,7 @@ exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_R
 /* jshint esversion: 6 */
 
 /* global window, document */
-var TEST_ENABLED = true;
+var TEST_ENABLED = false;
 exports.TEST_ENABLED = TEST_ENABLED;
 var ROOM_RADIUS = 200;
 exports.ROOM_RADIUS = ROOM_RADIUS;
@@ -74,8 +74,11 @@ var Emittable =
 /*#__PURE__*/
 function () {
   function Emittable() {
+    var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
     _classCallCheck(this, Emittable);
 
+    Object.assign(this, options);
     this.events = {};
   }
 
@@ -504,8 +507,10 @@ function (_THREE$Group) {
     }
   }]);
 
-  function Controller(parent, hand) {
+  function Controller(parent, gamepad) {
     var _this;
+
+    var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
     _classCallCheck(this, Controller);
 
@@ -520,19 +525,75 @@ function (_THREE$Group) {
       return new THREE.Vector2();
     });
     _this.parent = parent;
-    _this.hand = hand;
+    _this.gamepad = gamepad;
+    _this.options = options;
+    _this.hand = gamepad.hand;
 
-    var model = _this.model = _this.addModel(hand);
+    var model = _this.model = _this.addModel(_this.hand);
 
-    var ray = _this.ray = _this.addRay(hand);
+    var ray = _this.ray = _this.addRay(_this.hand);
 
     _this.add(model);
 
     parent.add(_assertThisInitialized(_this));
+
+    _this.addEvents();
+
     return _this;
   }
 
   _createClass(Controller, [{
+    key: "addEvents",
+    value: function addEvents() {
+      var gamepad = this.gamepad;
+      gamepad.on('activate', this.onActivate);
+      gamepad.on('deactivate', this.onActivate);
+      gamepad.on('press', this.onPress);
+      gamepad.on('release', this.onRelease);
+      gamepad.on('axis', this.onAxis);
+    }
+  }, {
+    key: "removeEvents",
+    value: function removeEvents() {
+      var gamepad = this.gamepad;
+      gamepad.off('activate', this.onActivate);
+      gamepad.off('deactivate', this.onActivate);
+      gamepad.off('press', this.onPress);
+      gamepad.off('release', this.onRelease);
+      gamepad.off('axis', this.onAxis);
+    }
+  }, {
+    key: "onActivate",
+    value: function onActivate(gamepad) {
+      this.active = true;
+    }
+  }, {
+    key: "onDeactivate",
+    value: function onDeactivate(gamepad) {
+      this.active = false;
+    }
+  }, {
+    key: "onPress",
+    value: function onPress(button) {
+      this.press(button.index);
+    }
+  }, {
+    key: "onRelease",
+    value: function onRelease(button) {
+      this.release(button.index);
+    }
+  }, {
+    key: "onAxis",
+    value: function onAxis(axis) {
+      this.axis[axis.index] = axis;
+    }
+  }, {
+    key: "destroy",
+    value: function destroy() {
+      this.removeEvents();
+      this.gamepad = null;
+    }
+  }, {
     key: "addModel",
     value: function addModel(hand) {
       var geometry = new THREE.CylinderBufferGeometry((0, _const.cm)(2), (0, _const.cm)(2), (0, _const.cm)(12), 24);
@@ -564,22 +625,11 @@ function (_THREE$Group) {
       return mesh;
     }
   }, {
-    key: "update",
-    value: function update(tick) {}
-  }, {
     key: "press",
     value: function press(index) {
       TweenMax.to(this.buttons[index], 0.3, {
         value: 1,
         ease: Power2.easeOut
-        /*
-        onUpdate: () => {
-        	if (typeof this.buttons[index] === 'function') {
-        		this.buttons[index](this.tween.value);
-        	}
-        }
-        */
-
       });
     }
   }, {
@@ -588,21 +638,11 @@ function (_THREE$Group) {
       TweenMax.to(this.buttons[index], 0.3, {
         value: 0,
         ease: Power2.easeOut
-        /*
-        onUpdate: () => {
-        	if (typeof this.buttons[index] === 'function') {
-        		this.buttons[index](this.tween.value);
-        	}
-        }
-        */
-
       });
     }
   }, {
-    key: "move",
-    value: function move(axis) {
-      this.axis[axis.index] = axis;
-    }
+    key: "update",
+    value: function update(tick) {}
   }], [{
     key: "getCos",
     value: function getCos(tick) {
@@ -630,7 +670,159 @@ function (_THREE$Group) {
 
 exports.default = Controller;
 
-},{"../../const":1,"../gamepads":10}],8:[function(require,module,exports){
+},{"../../const":1,"../gamepads":11}],8:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _controller = _interopRequireDefault(require("./controller"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var OFF = new THREE.Color(0x000000);
+var ON = new THREE.Color(0x2196f3);
+
+var HandController =
+/*#__PURE__*/
+function (_Controller) {
+  _inherits(HandController, _Controller);
+
+  function HandController(parent, gamepad) {
+    var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+    _classCallCheck(this, HandController);
+
+    return _possibleConstructorReturn(this, _getPrototypeOf(HandController).call(this, parent, gamepad, options));
+  }
+
+  _createClass(HandController, [{
+    key: "addModel",
+    value: function addModel(hand) {
+      var _this = this;
+
+      var format = '.fbx'; // '.obj';
+
+      var path = "".concat(HandController.FOLDER, "/").concat(hand, "/").concat(hand, "-animated");
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg'); // const texture = new THREE.TextureLoader().load(`${path}.jpg`);
+
+      var material = new THREE.MeshMatcapMaterial({
+        color: 0xffffff,
+        // 0xccac98,
+        // map: texture,
+        matcap: matcap,
+        // transparent: true,
+        // opacity: 1,
+        // wireframe: true,
+        skinning: true
+      });
+      var mesh = new THREE.Group();
+      var loader = format === '.fbx' ? new THREE.FBXLoader() : new THREE.OBJLoader();
+      var i = 0;
+      loader.load("".concat(path).concat(format), function (object) {
+        var mixer = _this.mixer = new THREE.AnimationMixer(object);
+        mixer.timeScale = 2;
+        var clip = _this.clip = mixer.clipAction(object.animations[0]);
+        clip.setLoop(THREE.LoopOnce);
+        clip.clampWhenFinished = true; // clip.paused = true;
+        // clip.enable = true;
+
+        object.traverse(function (child) {
+          if (child instanceof THREE.Mesh) {
+            child.material = material.clone(); // child.geometry.scale(0.1, 0.1, 0.1);
+          }
+        });
+        object.scale.set(0.1, 0.1, 0.1);
+        mesh.add(object);
+        _this.ready = true;
+      }, function (xhr) {
+        _this.progress = xhr.loaded / xhr.total;
+      }, function (error) {
+        console.log("HandController.addModel not found ".concat(path, ".obj"));
+      });
+      return mesh;
+    }
+  }, {
+    key: "addRay",
+    value: function addRay(hand) {
+      var group = new THREE.Group();
+      return group;
+    }
+  }, {
+    key: "press",
+    value: function press(index) {
+      if (this.clip) {
+        if (this.clip.paused) {
+          this.clip.reset();
+        } else {
+          this.clip.play();
+        }
+      }
+    }
+  }, {
+    key: "release",
+    value: function release(index) {
+      if (this.clip) {
+        if (this.clip.paused) {
+          this.clip.reset();
+        } else {
+          this.clip.play();
+        }
+      }
+    }
+  }, {
+    key: "update",
+    value: function update(tick) {
+      var clock = this.clock || (this.clock = new THREE.Clock());
+
+      if (this.mixer) {
+        var delta = clock.getDelta();
+        this.mixer.update(delta);
+      }
+      /*
+      if (this.options.test && this.ready) {
+      	const time = clock.getElapsedTime();
+      	if (time > 0 && Math.floor(time) % 5 === 0) {
+      		if (this.clip.paused) {
+      			this.clip.play();
+      			// this.clip.play().reset();
+      			// console.log(this.clip);
+      		}
+      	}
+      	// this.buttons[1].value = Math.abs(Controller.getCos(tick, 1));
+      }
+      */
+
+    }
+  }]);
+
+  return HandController;
+}(_controller.default);
+
+exports.default = HandController;
+HandController.FOLDER = "models/hand";
+
+},{"./controller":7}],9:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -674,10 +866,12 @@ var OculusQuestController =
 function (_Controller) {
   _inherits(OculusQuestController, _Controller);
 
-  function OculusQuestController(parent, hand) {
+  function OculusQuestController(parent, gamepad) {
+    var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
     _classCallCheck(this, OculusQuestController);
 
-    return _possibleConstructorReturn(this, _getPrototypeOf(OculusQuestController).call(this, parent, hand));
+    return _possibleConstructorReturn(this, _getPrototypeOf(OculusQuestController).call(this, parent, gamepad, options));
   }
 
   _createClass(OculusQuestController, [{
@@ -822,12 +1016,7 @@ function (_Controller) {
   }, {
     key: "update",
     value: function update(tick) {
-      this.test(tick);
-    }
-  }, {
-    key: "test",
-    value: function test(tick) {
-      if (_const.TEST_ENABLED && this.ready) {
+      if (this.options.test && this.ready) {
         this.axis[0].x = _controller.default.getCos(tick, 0);
         this.axis[0].y = _controller.default.getCos(tick, 1);
         this.buttons[1].value = Math.abs(_controller.default.getCos(tick, 1));
@@ -844,7 +1033,7 @@ function (_Controller) {
 exports.default = OculusQuestController;
 OculusQuestController.FOLDER = "models/oculus-quest";
 
-},{"../../const":1,"../gamepads":10,"./controller":7,"./controller-frag.glsl":6}],9:[function(require,module,exports){
+},{"../../const":1,"../gamepads":11,"./controller":7,"./controller-frag.glsl":6}],10:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -855,6 +1044,10 @@ exports.default = void 0;
 var _const = require("../const");
 
 var _emittable = _interopRequireDefault(require("../interactive/emittable"));
+
+var _controller = _interopRequireDefault(require("./controller/controller"));
+
+var _handController = _interopRequireDefault(require("./controller/hand-controller"));
 
 var _oculusQuestController = _interopRequireDefault(require("./controller/oculus-quest-controller"));
 
@@ -882,6 +1075,12 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
+var CONTROLLERS = {
+  DEFAULT: _controller.default,
+  OCULUS_QUEST: _oculusQuestController.default,
+  HAND: _handController.default
+};
+
 var Controllers =
 /*#__PURE__*/
 function (_Emittable) {
@@ -889,6 +1088,8 @@ function (_Emittable) {
 
   function Controllers(renderer, scene) {
     var _this;
+
+    var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
     _classCallCheck(this, Controllers);
 
@@ -898,16 +1099,39 @@ function (_Emittable) {
     _this.gamepads_ = {};
     _this.renderer = renderer;
     _this.scene = scene;
+    _this.options = Object.assign({
+      debug: false,
+      test: _const.TEST_ENABLED
+    }, options);
     _this.direction = new THREE.Vector3();
 
-    var text = _this.text = _this.addText_(scene);
+    if (_this.options.debug) {
+      _this.text = _this.addText_(scene);
+    }
 
     var gamepads = _this.gamepads = _this.addGamepads_();
 
     _this.addTestController_();
 
+    _this.addEvents();
+
     return _this;
   }
+  /*
+  get controller() {
+  	return this.controller_;
+  }
+  	set controller(controller) {
+  	if (this.controller_ !== controller) {
+  		if (this.controller_) {
+  			this.controller_.active = false;
+  		}
+  		this.controller_ = controller;
+  		controller.active = true;
+  	}
+  }
+  */
+
 
   _createClass(Controllers, [{
     key: "feedback",
@@ -947,83 +1171,75 @@ function (_Emittable) {
     value: function addGamepads_() {
       var _this3 = this;
 
-      var gamepads = this.gamepads = new _gamepads.default(function (text) {
-        _this3.setText(text);
-      });
-      gamepads.on('connect', function (gamepad) {
-        // console.log('connect', gamepad);
-        _this3.setText("connect ".concat(gamepad.hand, " ").concat(gamepad.index));
-
-        var controller = _this3.addController_(_this3.renderer, _this3.scene, gamepad);
-
-        if (gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-          _this3.left = controller;
-        } else {
-          _this3.right = controller;
-        }
-      });
-      gamepads.on('disconnect', function (gamepad) {
-        // console.log('disconnect', gamepad);
-        _this3.setText("disconnect ".concat(gamepad.hand, " ").concat(gamepad.index));
-
-        _this3.removeController_(gamepad);
-      });
-      gamepads.on('hand', function (gamepad) {
-        _this3.gamepad = gamepad;
-      });
-      gamepads.on('press', function (button) {
-        // console.log('press', press);
-        _this3.setText("press ".concat(button.gamepad.hand, " ").concat(button.index));
-
-        switch (button.gamepad.hand) {
-          case _gamepads.GAMEPAD_HANDS.LEFT:
-            // 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
-
-            /*
-            switch (button.index) {
-            	case 1:
-            		break;
-            	case 2:
-            		break;
-            	case 3:
-            		break;
-            }
-            */
-            break;
-
-          case _gamepads.GAMEPAD_HANDS.RIGHT:
-            // 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
-            break;
-        }
-
-        var controller = _this3.controllers_[button.gamepad.index];
-
-        if (controller) {
-          controller.press(button.index);
-        }
-      });
-      gamepads.on('release', function (button) {
-        // console.log('release', button);
-        // this.setText(`release ${button.gamepad.hand} ${button.index}`);
-        var controller = _this3.controllers_[button.gamepad.index];
-
-        if (controller) {
-          controller.release(button.index);
-        }
-      });
-      gamepads.on('axis', function (axis) {
-        // console.log('axis', axis);
-        // this.setText(`axis ${axis.gamepad.hand} ${axis.index} { x:${axis.x}, y:${axis.y} }`);
-        var controller = _this3.controllers_[axis.gamepad.index];
-
-        if (controller) {
-          controller.axis[axis.index] = axis;
-        }
-      });
-      gamepads.on('broadcast', function (type, event) {
-        _this3.emit(type, event);
+      var gamepads = new _gamepads.default(function (message, object) {
+        _this3.log(message, object);
       });
       return gamepads;
+    }
+  }, {
+    key: "addEvents",
+    value: function addEvents() {
+      var gamepads = this.gamepads;
+      gamepads.on('connect', this.onConnect);
+      gamepads.on('disconnect', this.onDisconnect);
+      gamepads.on('activate', this.onActivate);
+      gamepads.on('press', this.onPress);
+      gamepads.on('release', this.onRelease);
+      gamepads.on('axis', this.onAxis);
+      gamepads.on('broadcast', this.onBroadcast);
+    }
+  }, {
+    key: "removeEvents",
+    value: function removeEvents() {
+      var gamepads = this.gamepads;
+      gamepads.off('connect', this.onConnect);
+      gamepads.off('disconnect', this.onDisconnect);
+      gamepads.off('activate', this.onActivate);
+      gamepads.off('press', this.onPress);
+      gamepads.off('release', this.onRelease);
+      gamepads.off('axis', this.onAxis);
+      gamepads.off('broadcast', this.onBroadcast);
+    }
+  }, {
+    key: "onConnect",
+    value: function onConnect(gamepad) {
+      this.log("connect ".concat(gamepad.hand, " ").concat(gamepad.index), gamepad);
+      var controller = this.addController_(this.renderer, this.scene, gamepad);
+    }
+  }, {
+    key: "onDisconnect",
+    value: function onDisconnect(gamepad) {
+      this.log("disconnect ".concat(gamepad.hand, " ").concat(gamepad.index), gamepad);
+      this.removeController_(gamepad);
+    }
+  }, {
+    key: "onActivate",
+    value: function onActivate(gamepad) {
+      this.gamepad = gamepad;
+    }
+  }, {
+    key: "onPress",
+    value: function onPress(button) {
+      this.log("press ".concat(button.gamepad.hand, " ").concat(button.index), button);
+    }
+  }, {
+    key: "onRelease",
+    value: function onRelease(button) {// this.log(`release ${button.gamepad.hand} ${button.index}`, button);
+    }
+  }, {
+    key: "onAxis",
+    value: function onAxis(axis) {// this.log(`axis ${axis.gamepad.hand} ${axis.index} { x:${axis.x}, y:${axis.y} }`, axis);
+    }
+  }, {
+    key: "onBroadcast",
+    value: function onBroadcast(type, event) {
+      this.emit(type, event);
+    }
+  }, {
+    key: "destroy",
+    value: function destroy() {
+      this.removeEvents();
+      this.gamepads = null;
     }
   }, {
     key: "addController_",
@@ -1033,7 +1249,7 @@ function (_Emittable) {
 
       if (!controller) {
         var pivot = renderer.vr.getController(index);
-        controller = new _oculusQuestController.default(pivot, gamepad.hand);
+        controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
         this.controllers_[index] = controller;
         scene.add(pivot);
       }
@@ -1055,11 +1271,14 @@ function (_Emittable) {
   }, {
     key: "addTestController_",
     value: function addTestController_() {
-      if (_const.TEST_ENABLED) {
-        // const controller = new Controller(this.scene, GAMEPAD_HANDS.RIGHT);
-        var controller = new _oculusQuestController.default(this.scene, _gamepads.GAMEPAD_HANDS.RIGHT); // const controller = new HandController(this.scene, GAMEPAD_HANDS.RIGHT);
-        // controller.scale.set(15, 15, 15);
+      if (this.options.test) {
+        var gamepad = new _emittable.default({
+          hand: _gamepads.GAMEPAD_HANDS.RIGHT
+        }); // const controller = new CONTROLLERS.DEFAULT(this.scene, gamepad, this.options);
+        // const controller = new CONTROLLERS.OCULUS_QUEST(this.scene, gamepad, this.options);
 
+        var controller = new CONTROLLERS.HAND(this.scene, gamepad, this.options);
+        controller.scale.set(4, 4, 4);
         controller.position.set(0, 1, -2);
         this.controller = controller;
         this.controllers_[0] = controller;
@@ -1067,20 +1286,40 @@ function (_Emittable) {
           x: 0,
           y: 0
         };
+        this.onMouseUp = this.onMouseUp.bind(this);
+        this.onMouseDown = this.onMouseDown.bind(this);
         this.onMouseMove = this.onMouseMove.bind(this);
+        window.addEventListener('mousedown', this.onMouseDown);
+        window.addEventListener('mouseup', this.onMouseUp);
         window.addEventListener('mousemove', this.onMouseMove);
+      }
+    }
+  }, {
+    key: "onMouseDown",
+    value: function onMouseDown(event) {
+      var controller = this.controller;
+
+      if (controller) {
+        controller.press(1);
+      }
+    }
+  }, {
+    key: "onMouseUp",
+    value: function onMouseUp(event) {
+      var controller = this.controller;
+
+      if (controller) {
+        controller.release(1);
       }
     }
   }, {
     key: "onMouseMove",
     value: function onMouseMove(event) {
-      try {
-        var w2 = window.innerWidth / 2;
-        var h2 = window.innerHeight / 2;
-        this.mouse.x = (event.clientX - w2) / w2;
-        this.mouse.y = -(event.clientY - h2) / h2;
-        this.updateTest(this.mouse);
-      } catch (error) {}
+      var w2 = window.innerWidth / 2;
+      var h2 = window.innerHeight / 2;
+      this.mouse.x = (event.clientX - w2) / w2;
+      this.mouse.y = -(event.clientY - h2) / h2;
+      this.updateTest(this.mouse);
     }
   }, {
     key: "updateTest",
@@ -1090,6 +1329,14 @@ function (_Emittable) {
       if (controller) {
         controller.rotation.y = -mouse.x * Math.PI;
         controller.rotation.x = mouse.y * Math.PI / 2;
+      }
+    }
+  }, {
+    key: "log",
+    value: function log(message) {
+      if (this.options.debug) {
+        console.log(message, object);
+        this.setText(message);
       }
     }
   }, {
@@ -1113,39 +1360,25 @@ function (_Emittable) {
   }, {
     key: "setText",
     value: function setText(message) {
-      message = message || '1';
+      if (this.options.debug) {
+        message = message || '1';
 
-      if (this.text) {
-        this.text.parent.remove(this.text);
-        this.text.geometry.dispose();
-      }
-
-      if (this.font) {
-        // console.log(this.font.generateShapes);
-        var shapes = this.font.generateShapes(message, 5);
-        var geometry = new THREE.ShapeBufferGeometry(shapes);
-        geometry.computeBoundingBox();
-        var x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-        geometry.translate(x, 0, 0);
-        var text = new THREE.Mesh(geometry, this.fontMaterial);
-        text.position.set(0, 0, -_const.POINTER_RADIUS);
-        this.text = text;
-        this.scene.add(text);
-      }
-    }
-  }, {
-    key: "controller",
-    get: function get() {
-      return this.controller_;
-    },
-    set: function set(controller) {
-      if (this.controller_ !== controller) {
-        if (this.controller_) {
-          this.controller_.active = false;
+        if (this.text) {
+          this.text.parent.remove(this.text);
+          this.text.geometry.dispose();
         }
 
-        this.controller_ = controller;
-        controller.active = true;
+        if (this.font) {
+          var shapes = this.font.generateShapes(message, 5);
+          var geometry = new THREE.ShapeBufferGeometry(shapes);
+          geometry.computeBoundingBox();
+          var x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+          geometry.translate(x, 0, 0);
+          var text = new THREE.Mesh(geometry, this.fontMaterial);
+          text.position.set(0, 0, -_const.POINTER_RADIUS);
+          this.text = text;
+          this.scene.add(text);
+        }
       }
     }
   }, {
@@ -1166,7 +1399,7 @@ function (_Emittable) {
 
 exports.default = Controllers;
 
-},{"../const":1,"../interactive/emittable":2,"./controller/oculus-quest-controller":8,"./gamepads":10}],10:[function(require,module,exports){
+},{"../const":1,"../interactive/emittable":2,"./controller/controller":7,"./controller/hand-controller":8,"./controller/oculus-quest-controller":9,"./gamepads":11}],11:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1247,13 +1480,13 @@ function (_Emittable) {
     }
   }]);
 
-  function Gamepads(setText) {
+  function Gamepads(log) {
     var _this;
 
     _classCallCheck(this, Gamepads);
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Gamepads).call(this));
-    _this.setText = setText;
+    _this.log = log;
     _this.hands = {};
 
     _this.onConnect = function (event) {
@@ -1276,7 +1509,7 @@ function (_Emittable) {
         // Note: $gamepad === navigator.getGamepads()[$gamepad.index]
         if ($gamepad) {
           var id = $gamepad.id;
-          this.setText("connect ".concat($gamepad.id, " ").concat(Gamepads.isSupported(id)));
+          this.log("connect ".concat($gamepad.id, " ").concat(Gamepads.isSupported(id)), $gamepad);
 
           if (Gamepads.isSupported(id)) {
             var index = $gamepad.index;
@@ -1322,15 +1555,19 @@ function (_Emittable) {
       switch (type) {
         case 'press':
           if (this.button !== event) {
+            if (this.button) {
+              event.gamepad.emit('deactivate', this.button.gamepad);
+            }
+
             this.button = event;
-            this.emit('hand', event.gamepad);
+            event.gamepad.emit('activate', event.gamepad);
           }
 
           break;
 
         case 'release':
           if (this.button === event) {
-            this.button = null; // this.emit('hand', event.gamepad);
+            this.button = null; // event.gamepad.emit('deactivate', event.gamepad);
           }
 
           break;
@@ -1523,7 +1760,9 @@ function (_Emittable2) {
     }
   }, {
     key: "destroy",
-    value: function destroy() {}
+    value: function destroy() {
+      this.gamepad = null;
+    }
   }]);
 
   return Gamepad;
@@ -1563,7 +1802,7 @@ function (_THREE$Vector) {
 
 exports.GamepadAxis = GamepadAxis;
 
-},{"../interactive/emittable":2}],11:[function(require,module,exports){
+},{"../interactive/emittable":2}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1952,7 +2191,7 @@ VRDisplays[0]: VRDisplay {
 
 exports.VR = VR;
 
-},{"../interactive/emittable":2}],12:[function(require,module,exports){
+},{"../interactive/emittable":2}],13:[function(require,module,exports){
 "use strict";
 
 var _const = require("./const");
@@ -2040,7 +2279,9 @@ function () {
       scene.add(cube1);
 
       if (this.vr.mode !== _vr.VR_MODE.NONE || _const.TEST_ENABLED) {
-        var controllers = this.controllers = new _controllers.default(renderer, scene);
+        var controllers = this.controllers = new _controllers.default(renderer, scene, {
+          debug: true
+        });
         controllers.on('press', function (button) {
           console.log('vrui.press', button.gamepad.hand, button.index);
 
@@ -2298,5 +2539,5 @@ function () {
 var tour = new vrui();
 tour.animate();
 
-},{"./const":1,"./interactive/interactive.mesh":5,"./vr/controllers":9,"./vr/gamepads":10,"./vr/vr":11}]},{},[12]);
+},{"./const":1,"./interactive/interactive.mesh":5,"./vr/controllers":10,"./vr/gamepads":11,"./vr/vr":12}]},{},[13]);
 //# sourceMappingURL=vrui.js.map

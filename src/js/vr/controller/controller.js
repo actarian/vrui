@@ -21,7 +21,7 @@ export default class Controller extends THREE.Group {
 		}
 	}
 
-	constructor(parent, hand) {
+	constructor(parent, gamepad, options = {}) {
 		super();
 		this.ready = false;
 		this.buttons = new Array(10).fill(0).map(x => {
@@ -29,11 +29,53 @@ export default class Controller extends THREE.Group {
 		});
 		this.axis = new Array(2).fill(0).map(x => new THREE.Vector2());
 		this.parent = parent;
-		this.hand = hand;
-		const model = this.model = this.addModel(hand);
-		const ray = this.ray = this.addRay(hand);
+		this.gamepad = gamepad;
+		this.options = options;
+		this.hand = gamepad.hand;
+		const model = this.model = this.addModel(this.hand);
+		const ray = this.ray = this.addRay(this.hand);
 		this.add(model);
 		parent.add(this);
+		this.addEvents();
+	}
+
+	addEvents() {
+		const gamepad = this.gamepad;
+		gamepad.on('activate', this.onActivate);
+		gamepad.on('deactivate', this.onActivate);
+		gamepad.on('press', this.onPress);
+		gamepad.on('release', this.onRelease);
+		gamepad.on('axis', this.onAxis);
+	}
+
+	removeEvents() {
+		const gamepad = this.gamepad;
+		gamepad.off('activate', this.onActivate);
+		gamepad.off('deactivate', this.onActivate);
+		gamepad.off('press', this.onPress);
+		gamepad.off('release', this.onRelease);
+		gamepad.off('axis', this.onAxis);
+	}
+
+	onActivate(gamepad) {
+		this.active = true;
+	}
+	onDeactivate(gamepad) {
+		this.active = false;
+	}
+	onPress(button) {
+		this.press(button.index);
+	}
+	onRelease(button) {
+		this.release(button.index);
+	}
+	onAxis(axis) {
+		this.axis[axis.index] = axis;
+	}
+
+	destroy() {
+		this.removeEvents();
+		this.gamepad = null;
 	}
 
 	addModel(hand) {
@@ -64,21 +106,10 @@ export default class Controller extends THREE.Group {
 		return mesh;
 	}
 
-	update(tick) {
-
-	}
-
 	press(index) {
 		TweenMax.to(this.buttons[index], 0.3, {
 			value: 1,
 			ease: Power2.easeOut,
-			/*
-			onUpdate: () => {
-				if (typeof this.buttons[index] === 'function') {
-					this.buttons[index](this.tween.value);
-				}
-			}
-			*/
 		});
 	}
 
@@ -86,19 +117,10 @@ export default class Controller extends THREE.Group {
 		TweenMax.to(this.buttons[index], 0.3, {
 			value: 0,
 			ease: Power2.easeOut,
-			/*
-			onUpdate: () => {
-				if (typeof this.buttons[index] === 'function') {
-					this.buttons[index](this.tween.value);
-				}
-			}
-			*/
 		});
 	}
 
-	move(axis) {
-		this.axis[axis.index] = axis;
-	}
+	update(tick) {}
 
 	static getCos(tick, i = 0) {
 		return Math.cos(i + tick * 0.1);

@@ -3,7 +3,8 @@
 
 export default class Emittable {
 
-	constructor() {
+	constructor(options = {}) {
+		Object.assign(this, options);
 		this.events = {};
 	}
 

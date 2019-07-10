@@ -67,7 +67,9 @@ class vrui {
 		scene.add(cube1);
 
 		if (this.vr.mode !== VR_MODE.NONE || TEST_ENABLED) {
-			const controllers = this.controllers = new Controllers(renderer, scene);
+			const controllers = this.controllers = new Controllers(renderer, scene, {
+				debug: true
+			});
 			controllers.on('press', (button) => {
 				console.log('vrui.press', button.gamepad.hand, button.index);
 				switch (button.gamepad.hand) {

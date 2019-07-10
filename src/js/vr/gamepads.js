@@ -34,9 +34,9 @@ export default class Gamepads extends Emittable {
 		return this.gamepads_;
 	}
 
-	constructor(setText) {
+	constructor(log) {
 		super();
-		this.setText = setText;
+		this.log = log;
 		this.hands = {};
 		this.onConnect = (event) => { this.connect(event.gamepad); };
 		this.onDisconnect = (event) => { this.disconnect(event.gamepad); };
@@ -49,7 +49,7 @@ export default class Gamepads extends Emittable {
 			// Note: $gamepad === navigator.getGamepads()[$gamepad.index]
 			if ($gamepad) {
 				const id = $gamepad.id;
-				this.setText(`connect ${$gamepad.id} ${Gamepads.isSupported(id)}`);
+				this.log(`connect ${$gamepad.id} ${Gamepads.isSupported(id)}`, $gamepad);
 				if (Gamepads.isSupported(id)) {
 					const index = $gamepad.index;
 					const gamepad = this.gamepads[index] ? this.gamepads[index] : (this.gamepads[index] = new Gamepad($gamepad));
@@ -89,14 +89,17 @@ export default class Gamepads extends Emittable {
 		switch (type) {
 			case 'press':
 				if (this.button !== event) {
+					if (this.button) {
+						event.gamepad.emit('deactivate', this.button.gamepad);
+					}
 					this.button = event;
-					this.emit('hand', event.gamepad);
+					event.gamepad.emit('activate', event.gamepad);
 				}
 				break;
 			case 'release':
 				if (this.button === event) {
 					this.button = null;
-					// this.emit('hand', event.gamepad);
+					// event.gamepad.emit('deactivate', event.gamepad);
 				}
 				break;
 		}
@@ -240,7 +243,7 @@ export class Gamepad extends Emittable {
 	}
 
 	destroy() {
-
+		this.gamepad = null;
 	}
 
 }
