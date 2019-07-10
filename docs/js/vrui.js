@@ -1248,8 +1248,10 @@ function (_Emittable) {
       var controller = this.controllers_[index];
 
       if (!controller) {
-        var pivot = renderer.vr.getController(index);
-        controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
+        var pivot = renderer.vr.getController(index); // controller = new CONTROLLERS.DEFAULT(pivot, gamepad, this.options);
+        // controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
+
+        controller = new CONTROLLERS.HAND(pivot, gamepad, this.options);
         this.controllers_[index] = controller;
         scene.add(pivot);
       }

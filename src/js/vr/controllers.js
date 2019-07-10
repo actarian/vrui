@@ -147,7 +147,9 @@ export default class Controllers extends Emittable {
 		let controller = this.controllers_[index];
 		if (!controller) {
 			const pivot = renderer.vr.getController(index);
-			controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
+			// controller = new CONTROLLERS.DEFAULT(pivot, gamepad, this.options);
+			// controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
+			controller = new CONTROLLERS.HAND(pivot, gamepad, this.options);
 			this.controllers_[index] = controller;
 			scene.add(pivot);
 		}
