@@ -705,9 +705,6 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
-var OFF = new THREE.Color(0x000000);
-var ON = new THREE.Color(0x2196f3);
-
 var HandController =
 /*#__PURE__*/
 function (_Controller) {
@@ -726,19 +723,14 @@ function (_Controller) {
     value: function addModel(hand) {
       var _this = this;
 
-      var format = '.fbx'; // '.obj';
-
-      var path = "".concat(HandController.FOLDER, "/").concat(hand, "/").concat(hand, "-animated_");
+      var format = '.fbx';
+      var path = "".concat(HandController.FOLDER, "/").concat(hand, "/").concat(hand, "-animated__");
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg'); // const texture = new THREE.TextureLoader().load(`${path}.jpg`);
 
       var material = new THREE.MeshMatcapMaterial({
         color: 0xffffff,
-        // 0xccac98,
         // map: texture,
         matcap: matcap,
-        // transparent: true,
-        // opacity: 1,
-        // wireframe: true,
         skinning: true
       });
       var mesh = new THREE.Group();
@@ -749,15 +741,13 @@ function (_Controller) {
         mixer.timeScale = 2;
         var clip = _this.clip = mixer.clipAction(object.animations[0]);
         clip.setLoop(THREE.LoopOnce);
-        clip.clampWhenFinished = true; // clip.paused = true;
-        // clip.enable = true;
-
+        clip.clampWhenFinished = true;
         object.traverse(function (child) {
           if (child instanceof THREE.Mesh) {
             child.material = material.clone(); // child.geometry.scale(0.1, 0.1, 0.1);
           }
-        });
-        object.scale.set(0.1, 0.1, 0.1);
+        }); // object.scale.set(0.1, 0.1, 0.1);
+
         mesh.add(object);
         _this.ready = true;
       }, function (xhr) {

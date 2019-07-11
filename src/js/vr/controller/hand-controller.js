@@ -3,9 +3,6 @@
 
 import Controller from './controller';
 
-const OFF = new THREE.Color(0x000000);
-const ON = new THREE.Color(0x2196f3);
-
 export default class HandController extends Controller {
 
 	constructor(parent, gamepad, options = {}) {
@@ -13,17 +10,14 @@ export default class HandController extends Controller {
 	}
 
 	addModel(hand) {
-		const format = '.fbx'; // '.obj';
-		const path = `${HandController.FOLDER}/${hand}/${hand}-animated_`;
+		const format = '.fbx';
+		const path = `${HandController.FOLDER}/${hand}/${hand}-animated__`;
 		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
 		// const texture = new THREE.TextureLoader().load(`${path}.jpg`);
 		const material = new THREE.MeshMatcapMaterial({
-			color: 0xffffff, // 0xccac98,
+			color: 0xffffff,
 			// map: texture,
 			matcap: matcap,
-			// transparent: true,
-			// opacity: 1,
-			// wireframe: true,
 			skinning: true,
 		});
 		const mesh = new THREE.Group();
@@ -35,15 +29,13 @@ export default class HandController extends Controller {
 			const clip = this.clip = mixer.clipAction(object.animations[0]);
 			clip.setLoop(THREE.LoopOnce);
 			clip.clampWhenFinished = true;
-			// clip.paused = true;
-			// clip.enable = true;
 			object.traverse((child) => {
 				if (child instanceof THREE.Mesh) {
 					child.material = material.clone();
 					// child.geometry.scale(0.1, 0.1, 0.1);
 				}
 			});
-			object.scale.set(0.1, 0.1, 0.1);
+			// object.scale.set(0.1, 0.1, 0.1);
 			mesh.add(object);
 			this.ready = true;
 		}, (xhr) => {
