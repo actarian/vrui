@@ -5,6 +5,7 @@
 // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import { cm, TEST_ENABLED } from './const';
+import RoundBoxGeometry from './geometries/round-box.geometry';
 import InteractiveMesh from './interactive/interactive.mesh';
 import Controllers from './vr/controllers';
 import { GAMEPAD_HANDS } from './vr/gamepads';
@@ -14,19 +15,14 @@ class vrui {
 
 	constructor() {
 		this.tick = 0;
-		this.mouse = { x: 0, y: 0 };
-		this.parallax = { x: 0, y: 0 };
-		this.size = { width: 0, height: 0, aspect: 0 };
-		this.cameraDirection = new THREE.Vector3();
-		this.init();
-	}
-
-	init() {
+		// this.mouse = { x: 0, y: 0 };
+		// this.size = { width: 0, height: 0, aspect: 0 };
+		// this.cameraDirection = new THREE.Vector3();
+		//
 		const section = this.section = document.querySelector('.vrui');
 		const container = this.container = section.querySelector('.vrui__container');
 		const debugInfo = this.debugInfo = section.querySelector('.debug__info');
 		const debugSave = this.debugSave = section.querySelector('.debug__save');
-
 		const renderer = this.renderer = new THREE.WebGLRenderer({
 			antialias: true,
 		});
@@ -60,10 +56,10 @@ class vrui {
 		const bg = this.bg = this.addBG();
 		scene.add(bg);
 
-		const cube0 = this.cube0 = this.addCube(0);
+		const cube0 = this.cube0 = this.addRoundedCube(0);
 		scene.add(cube0);
 
-		const cube1 = this.cube1 = this.addCube(1);
+		const cube1 = this.cube1 = this.addRoundedCube(1);
 		scene.add(cube1);
 
 		if (this.vr.mode !== VR_MODE.NONE || TEST_ENABLED) {
@@ -185,6 +181,46 @@ class vrui {
 		return cube;
 	}
 
+	addRoundedCube(index) {
+		// const matcap = new THREE.TextureLoader().load('img/matcap/matcap-11.png');
+		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-03.jpg');
+		const geometry = new RoundBoxGeometry(cm(20), cm(20), cm(20), cm(4), 1, 1, 1, 3)
+		const material = new THREE.MeshMatcapMaterial({
+			color: 0xffffff,
+			matcap: matcap,
+			/*
+			transparent: true,
+			opacity: 0.4,
+			side: THREE.DoubleSide,
+			*/
+		});
+		const cube = new InteractiveMesh(geometry, material);
+		cube.position.set(index === 0 ? -cm(30) : cm(30), cm(136), -2);
+		cube.userData = {
+			scale: new THREE.Vector3(1, 1, 1),
+			rotation: new THREE.Vector3(),
+		};
+		cube.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+			cube.scale.set(cube.userData.scale.x, cube.userData.scale.y, cube.userData.scale.z);
+			cube.rotation.set(cube.userData.rotation.x, cube.userData.rotation.y, cube.userData.rotation.z);
+			cube.userData.rotation.y += (0.01 + 0.01 * index);
+			cube.userData.rotation.x += (0.01 + 0.01 * index);
+		};
+		cube.on('over', () => {
+			cube.material.color.setHex(0xffffff);
+		});
+		cube.on('out', () => {
+			cube.material.color.setHex(0xcccccc);
+		});
+		cube.on('down', () => {
+			cube.material.color.setHex(0x0000ff);
+		});
+		cube.on('up', () => {
+			cube.material.color.setHex(0xcccccc);
+		});
+		return cube;
+	}
+
 	addBG() {
 		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-10.jpg');
 		const geometry = new THREE.Geometry();
@@ -194,7 +230,10 @@ class vrui {
 			const h = 3.0 + Math.random() * 3.0;
 			const r = 5 + Math.random() * 20;
 			const a = Math.PI * 2 * Math.random();
-			const cubeGeometry = new THREE.BoxGeometry(s, h, s);
+			// const cubeGeometry = new THREE.BoxGeometry(s, h, s);
+			const cubeBufferGeometry = new RoundBoxGeometry(s, h, s, cm(4),
+				1, 1, 1, 3);
+			const cubeGeometry = new THREE.Geometry().fromBufferGeometry(cubeBufferGeometry);
 			cubeGeometry.translate(Math.cos(a) * r, h / 2, Math.sin(a) * r);
 			cubeGeometry.lookAt(origin);
 			geometry.merge(cubeGeometry);

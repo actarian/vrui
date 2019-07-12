@@ -1,6 +1,7 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
+import { GAMEPAD_HANDS } from '../gamepads';
 import Controller from './controller';
 
 export default class HandController extends Controller {
@@ -36,6 +37,7 @@ export default class HandController extends Controller {
 				}
 			});
 			// object.scale.set(0.1, 0.1, 0.1);
+			object.scale.set(hand === GAMEPAD_HANDS.LEFT ? -1 : 1, 1, 1);
 			mesh.add(object);
 			this.ready = true;
 		}, (xhr) => {

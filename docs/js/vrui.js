@@ -59,6 +59,129 @@ THREE.Euler.prototype.add = function (euler) {
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.default = RoundBoxGeometry;
+
+/* jshint esversion: 6 */
+
+/* global window, document, TweenMax, ThreeJs */
+function RoundBoxGeometry(width, height, depth, radius, widthSegments, heightSegments, depthSegments, radiusSegments) {
+  width = width || 1;
+  height = height || 1;
+  depth = depth || 1;
+  var minimum = Math.min(Math.min(width, height), depth);
+  radius = radius || minimum * 0.25;
+  radius = radius > minimum * 0.5 ? minimum * 0.5 : radius;
+  widthSegments = Math.floor(widthSegments) || 1;
+  heightSegments = Math.floor(heightSegments) || 1;
+  depthSegments = Math.floor(depthSegments) || 1;
+  radiusSegments = Math.floor(radiusSegments) || 1;
+  var fullGeometry = new THREE.BufferGeometry();
+  var fullPosition = [];
+  var fullUvs = [];
+  var fullIndex = [];
+  var fullIndexStart = 0;
+  var groupStart = 0;
+  RoundBoxGeometryBendPlane_(width, height, radius, widthSegments, heightSegments, radiusSegments, depth * 0.5, 'y', 0, 0);
+  RoundBoxGeometryBendPlane_(width, height, radius, widthSegments, heightSegments, radiusSegments, depth * 0.5, 'y', Math.PI, 1);
+  RoundBoxGeometryBendPlane_(depth, height, radius, depthSegments, heightSegments, radiusSegments, width * 0.5, 'y', Math.PI * 0.5, 2);
+  RoundBoxGeometryBendPlane_(depth, height, radius, depthSegments, heightSegments, radiusSegments, width * 0.5, 'y', Math.PI * -0.5, 3);
+  RoundBoxGeometryBendPlane_(width, depth, radius, widthSegments, depthSegments, radiusSegments, height * 0.5, 'x', Math.PI * -0.5, 4);
+  RoundBoxGeometryBendPlane_(width, depth, radius, widthSegments, depthSegments, radiusSegments, height * 0.5, 'x', Math.PI * 0.5, 5);
+  fullGeometry.addAttribute("position", new THREE.BufferAttribute(new Float32Array(fullPosition), 3));
+  fullGeometry.addAttribute("uv", new THREE.BufferAttribute(new Float32Array(fullUvs), 2));
+  fullGeometry.setIndex(fullIndex);
+  fullGeometry.computeVertexNormals();
+  return fullGeometry;
+
+  function RoundBoxGeometryBendPlane_(width, height, radius, widthSegments, heightSegments, smoothness, offset, axis, angle, materialIndex) {
+    var halfWidth = width * 0.5;
+    var halfHeight = height * 0.5;
+    var widthChunk = width / (widthSegments + smoothness * 2);
+    var heightChunk = height / (heightSegments + smoothness * 2);
+    var planeGeom = new THREE.PlaneBufferGeometry(width, height, widthSegments + smoothness * 2, heightSegments + smoothness * 2);
+    var v = new THREE.Vector3(); // current vertex
+
+    var cv = new THREE.Vector3(); // control vertex for bending
+
+    var cd = new THREE.Vector3(); // vector for distance
+
+    var position = planeGeom.attributes.position;
+    var uv = planeGeom.attributes.uv;
+    var widthShrinkLimit = widthChunk * smoothness;
+    var widthShrinkRatio = radius / widthShrinkLimit;
+    var heightShrinkLimit = heightChunk * smoothness;
+    var heightShrinkRatio = radius / heightShrinkLimit;
+    var widthInflateRatio = (halfWidth - radius) / (halfWidth - widthShrinkLimit);
+    var heightInflateRatio = (halfHeight - radius) / (halfHeight - heightShrinkLimit);
+
+    for (var i = 0; i < position.count; i++) {
+      v.fromBufferAttribute(position, i);
+
+      if (Math.abs(v.x) >= halfWidth - widthShrinkLimit) {
+        v.setX((halfWidth - (halfWidth - Math.abs(v.x)) * widthShrinkRatio) * Math.sign(v.x));
+      } else {
+        v.x *= widthInflateRatio;
+      } // lr
+
+
+      if (Math.abs(v.y) >= halfHeight - heightShrinkLimit) {
+        v.setY((halfHeight - (halfHeight - Math.abs(v.y)) * heightShrinkRatio) * Math.sign(v.y));
+      } else {
+        v.y *= heightInflateRatio;
+      } // tb
+      //re-calculation of uvs
+
+
+      uv.setXY(i, (v.x - -halfWidth) / width, 1 - (halfHeight - v.y) / height); // bending
+
+      var widthExceeds = Math.abs(v.x) >= halfWidth - radius;
+      var heightExceeds = Math.abs(v.y) >= halfHeight - radius;
+
+      if (widthExceeds || heightExceeds) {
+        cv.set(widthExceeds ? (halfWidth - radius) * Math.sign(v.x) : v.x, heightExceeds ? (halfHeight - radius) * Math.sign(v.y) : v.y, -radius);
+        cd.subVectors(v, cv).normalize();
+        v.copy(cv).addScaledVector(cd, radius);
+      }
+
+      position.setXYZ(i, v.x, v.y, v.z);
+    }
+
+    planeGeom.translate(0, 0, offset);
+
+    switch (axis) {
+      case 'y':
+        planeGeom.rotateY(angle);
+        break;
+
+      case 'x':
+        planeGeom.rotateX(angle);
+    } // merge positions
+
+
+    position.array.forEach(function (p) {
+      fullPosition.push(p);
+    }); // merge uvs
+
+    uv.array.forEach(function (u) {
+      fullUvs.push(u);
+    }); // merge indices
+
+    planeGeom.index.array.forEach(function (a) {
+      fullIndex.push(a + fullIndexStart);
+    });
+    fullIndexStart += position.count; // set the groups
+
+    fullGeometry.addGroup(groupStart, planeGeom.index.count, materialIndex);
+    groupStart += planeGeom.index.count;
+  }
+}
+
+},{}],3:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
 exports.default = void 0;
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -133,7 +256,7 @@ function () {
 
 exports.default = Emittable;
 
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -236,7 +359,7 @@ function (_FreezableMesh) {
 
 exports.default = EmittableMesh;
 
-},{"./freezable.mesh":4}],4:[function(require,module,exports){
+},{"./freezable.mesh":5}],5:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -319,7 +442,7 @@ function (_THREE$Mesh) {
 
 exports.default = FreezableMesh;
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -442,7 +565,7 @@ function (_EmittableMesh) {
 exports.default = InteractiveMesh;
 InteractiveMesh.items = [];
 
-},{"./emittable.mesh":3}],6:[function(require,module,exports){
+},{"./emittable.mesh":4}],7:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -454,7 +577,7 @@ var ControllerFragGlsl =
 "\n#define MATCAP\nuniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float emissiveIntensity;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tvec4 emissiveColor = vec4( emissive, opacity );\n\t#include <logdepthbuf_fragment>\n\t/* #include <map_fragment> */\n\t#ifdef USE_MAP\n\t\tvec4 texelColor = texture2D( map, vUv );\n\t\ttexelColor = mapTexelToLinear( texelColor );\n\t\tdiffuseColor *= texelColor;\n\t\tdiffuseColor = mix(diffuseColor, emissiveColor, emissiveIntensity);\n\t#endif\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * (matcapColor.rgb + emissiveIntensity * 0.5); // max(matcapColor.rgb, emissiveColor.rgb);\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <premultiplied_alpha_fragment>\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n}\n";
 exports.ControllerFragGlsl = ControllerFragGlsl;
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -675,13 +798,15 @@ function (_THREE$Group) {
 
 exports.default = Controller;
 
-},{"../../const":1,"../gamepads":11}],8:[function(require,module,exports){
+},{"../../const":1,"../gamepads":12}],9:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
+
+var _gamepads = require("../gamepads");
 
 var _controller = _interopRequireDefault(require("./controller"));
 
@@ -748,6 +873,7 @@ function (_Controller) {
           }
         }); // object.scale.set(0.1, 0.1, 0.1);
 
+        object.scale.set(hand === _gamepads.GAMEPAD_HANDS.LEFT ? -1 : 1, 1, 1);
         mesh.add(object);
         _this.ready = true;
       }, function (xhr) {
@@ -817,7 +943,7 @@ function (_Controller) {
 exports.default = HandController;
 HandController.FOLDER = "models/hand";
 
-},{"./controller":7}],9:[function(require,module,exports){
+},{"../gamepads":12,"./controller":8}],10:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1028,7 +1154,7 @@ function (_Controller) {
 exports.default = OculusQuestController;
 OculusQuestController.FOLDER = "models/oculus-quest";
 
-},{"../../const":1,"../gamepads":11,"./controller":7,"./controller-frag.glsl":6}],10:[function(require,module,exports){
+},{"../../const":1,"../gamepads":12,"./controller":8,"./controller-frag.glsl":7}],11:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1403,7 +1529,7 @@ function (_Emittable) {
 
 exports.default = Controllers;
 
-},{"../const":1,"../interactive/emittable":2,"./controller/controller":7,"./controller/hand-controller":8,"./controller/oculus-quest-controller":9,"./gamepads":11}],11:[function(require,module,exports){
+},{"../const":1,"../interactive/emittable":3,"./controller/controller":8,"./controller/hand-controller":9,"./controller/oculus-quest-controller":10,"./gamepads":12}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1806,7 +1932,7 @@ function (_THREE$Vector) {
 
 exports.GamepadAxis = GamepadAxis;
 
-},{"../interactive/emittable":2}],12:[function(require,module,exports){
+},{"../interactive/emittable":3}],13:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2195,10 +2321,12 @@ VRDisplays[0]: VRDisplay {
 
 exports.VR = VR;
 
-},{"../interactive/emittable":2}],13:[function(require,module,exports){
+},{"../interactive/emittable":3}],14:[function(require,module,exports){
 "use strict";
 
 var _const = require("./const");
+
+var _roundBox = _interopRequireDefault(require("./geometries/round-box.geometry"));
 
 var _interactive = _interopRequireDefault(require("./interactive/interactive.mesh"));
 
@@ -2220,152 +2348,137 @@ var vrui =
 /*#__PURE__*/
 function () {
   function vrui() {
+    var _this = this;
+
     _classCallCheck(this, vrui);
 
-    this.tick = 0;
-    this.mouse = {
-      x: 0,
-      y: 0
-    };
-    this.parallax = {
-      x: 0,
-      y: 0
-    };
-    this.size = {
-      width: 0,
-      height: 0,
-      aspect: 0
-    };
-    this.cameraDirection = new THREE.Vector3();
-    this.init();
+    this.tick = 0; // this.mouse = { x: 0, y: 0 };
+    // this.size = { width: 0, height: 0, aspect: 0 };
+    // this.cameraDirection = new THREE.Vector3();
+    //
+
+    var section = this.section = document.querySelector('.vrui');
+    var container = this.container = section.querySelector('.vrui__container');
+    var debugInfo = this.debugInfo = section.querySelector('.debug__info');
+    var debugSave = this.debugSave = section.querySelector('.debug__save');
+    var renderer = this.renderer = new THREE.WebGLRenderer({
+      antialias: true
+    });
+    renderer.setClearColor(0x666666, 1);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.vr.enabled = true;
+    container.appendChild(renderer.domElement);
+    var vr = this.vr = new _vr.VR(renderer, {
+      referenceSpaceType: 'local'
+    }, function (error) {
+      _this.debugInfo.innerHTML = error;
+    });
+    container.appendChild(vr.element);
+    var raycaster = this.raycaster = new THREE.Raycaster();
+    var scene = this.scene = new THREE.Scene();
+    var camera = this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, (0, _const.cm)(176), 0);
+    camera.target = new THREE.Vector3(0, (0, _const.cm)(176), -2);
+    camera.lookAt(camera.target);
+    /*
+    const light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
+    scene.add(light);
+    */
+
+    var hdr = this.hdr = this.getEnvMap(function (texture, textureData) {});
+    var bg = this.bg = this.addBG();
+    scene.add(bg);
+    var cube0 = this.cube0 = this.addRoundedCube(0);
+    scene.add(cube0);
+    var cube1 = this.cube1 = this.addRoundedCube(1);
+    scene.add(cube1);
+
+    if (this.vr.mode !== _vr.VR_MODE.NONE || _const.TEST_ENABLED) {
+      var controllers = this.controllers = new _controllers.default(renderer, scene, {
+        debug: true
+      });
+      controllers.on('press', function (button) {
+        console.log('vrui.press', button.gamepad.hand, button.index);
+
+        switch (button.gamepad.hand) {
+          case _gamepads.GAMEPAD_HANDS.LEFT:
+            // 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
+
+            /*
+            switch (button.index) {
+            	case 1:
+            		break;
+            }
+            */
+            break;
+
+          case _gamepads.GAMEPAD_HANDS.RIGHT:
+            // 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
+            break;
+        }
+      });
+      controllers.on('release', function (button) {
+        console.log('vrui.release', button.gamepad.hand, button.index);
+      });
+      controllers.on('left', function (axis) {
+        if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+          console.log('vrui.left', axis.gamepad.hand, axis.index);
+          TweenMax.to(cube0.userData.rotation, 0.3, {
+            y: cube0.userData.rotation.y - Math.PI / 2,
+            ease: Power2.easeInOut
+          });
+        }
+      });
+      controllers.on('right', function (axis) {
+        if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+          console.log('vrui.right', axis.gamepad.hand, axis.index);
+          TweenMax.to(cube0.userData.rotation, 0.3, {
+            y: cube0.userData.rotation.y + Math.PI / 2,
+            ease: Power2.easeInOut
+          });
+        }
+      });
+      controllers.on('up', function (axis) {
+        if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+          console.log('vrui.up', axis.gamepad.hand, axis.index);
+          var s = Math.min(2.0, cube0.userData.scale.x + 0.1);
+          TweenMax.to(cube0.userData.scale, 0.3, {
+            x: s,
+            y: s,
+            z: s,
+            ease: Power2.easeInOut
+          });
+        }
+      });
+      controllers.on('down', function (axis) {
+        if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+          console.log('vrui.down', axis.gamepad.hand, axis.index);
+          var s = Math.max(0.1, cube0.userData.scale.x - 0.1);
+          TweenMax.to(cube0.userData.scale, 0.3, {
+            x: s,
+            y: s,
+            z: s,
+            ease: Power2.easeInOut
+          });
+        }
+      });
+      controllers.on('axis', function (axis) {
+        console.log('vrui.axis', axis.gamepad.hand, axis.index);
+
+        if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.RIGHT) {
+          var s = Math.max(0.1, Math.min(2, cube1.scale.x + axis.y * 0.1));
+          cube1.userData.scale.set(s, s, s);
+          cube1.userData.rotation.y += axis.x * 0.2;
+        }
+      });
+    }
+
+    this.onWindowResize = this.onWindowResize.bind(this);
+    window.addEventListener('resize', this.onWindowResize, false);
   }
 
   _createClass(vrui, [{
-    key: "init",
-    value: function init() {
-      var _this = this;
-
-      var section = this.section = document.querySelector('.vrui');
-      var container = this.container = section.querySelector('.vrui__container');
-      var debugInfo = this.debugInfo = section.querySelector('.debug__info');
-      var debugSave = this.debugSave = section.querySelector('.debug__save');
-      var renderer = this.renderer = new THREE.WebGLRenderer({
-        antialias: true
-      });
-      renderer.setClearColor(0x666666, 1);
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.vr.enabled = true;
-      container.appendChild(renderer.domElement);
-      var vr = this.vr = new _vr.VR(renderer, {
-        referenceSpaceType: 'local'
-      }, function (error) {
-        _this.debugInfo.innerHTML = error;
-      });
-      container.appendChild(vr.element);
-      var raycaster = this.raycaster = new THREE.Raycaster();
-      var scene = this.scene = new THREE.Scene();
-      var camera = this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, (0, _const.cm)(176), 0);
-      camera.target = new THREE.Vector3(0, (0, _const.cm)(176), -2);
-      camera.lookAt(camera.target);
-      /*
-      const light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
-      scene.add(light);
-      */
-
-      var hdr = this.hdr = this.getEnvMap(function (texture, textureData) {});
-      var bg = this.bg = this.addBG();
-      scene.add(bg);
-      var cube0 = this.cube0 = this.addCube(0);
-      scene.add(cube0);
-      var cube1 = this.cube1 = this.addCube(1);
-      scene.add(cube1);
-
-      if (this.vr.mode !== _vr.VR_MODE.NONE || _const.TEST_ENABLED) {
-        var controllers = this.controllers = new _controllers.default(renderer, scene, {
-          debug: true
-        });
-        controllers.on('press', function (button) {
-          console.log('vrui.press', button.gamepad.hand, button.index);
-
-          switch (button.gamepad.hand) {
-            case _gamepads.GAMEPAD_HANDS.LEFT:
-              // 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
-
-              /*
-              switch (button.index) {
-              	case 1:
-              		break;
-              }
-              */
-              break;
-
-            case _gamepads.GAMEPAD_HANDS.RIGHT:
-              // 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
-              break;
-          }
-        });
-        controllers.on('release', function (button) {
-          console.log('vrui.release', button.gamepad.hand, button.index);
-        });
-        controllers.on('left', function (axis) {
-          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-            console.log('vrui.left', axis.gamepad.hand, axis.index);
-            TweenMax.to(cube0.userData.rotation, 0.3, {
-              y: cube0.userData.rotation.y - Math.PI / 2,
-              ease: Power2.easeInOut
-            });
-          }
-        });
-        controllers.on('right', function (axis) {
-          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-            console.log('vrui.right', axis.gamepad.hand, axis.index);
-            TweenMax.to(cube0.userData.rotation, 0.3, {
-              y: cube0.userData.rotation.y + Math.PI / 2,
-              ease: Power2.easeInOut
-            });
-          }
-        });
-        controllers.on('up', function (axis) {
-          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-            console.log('vrui.up', axis.gamepad.hand, axis.index);
-            var s = Math.min(2.0, cube0.userData.scale.x + 0.1);
-            TweenMax.to(cube0.userData.scale, 0.3, {
-              x: s,
-              y: s,
-              z: s,
-              ease: Power2.easeInOut
-            });
-          }
-        });
-        controllers.on('down', function (axis) {
-          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-            console.log('vrui.down', axis.gamepad.hand, axis.index);
-            var s = Math.max(0.1, cube0.userData.scale.x - 0.1);
-            TweenMax.to(cube0.userData.scale, 0.3, {
-              x: s,
-              y: s,
-              z: s,
-              ease: Power2.easeInOut
-            });
-          }
-        });
-        controllers.on('axis', function (axis) {
-          console.log('vrui.axis', axis.gamepad.hand, axis.index);
-
-          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.RIGHT) {
-            var s = Math.max(0.1, Math.min(2, cube1.scale.x + axis.y * 0.1));
-            cube1.userData.scale.set(s, s, s);
-            cube1.userData.rotation.y += axis.x * 0.2;
-          }
-        });
-      }
-
-      this.onWindowResize = this.onWindowResize.bind(this);
-      window.addEventListener('resize', this.onWindowResize, false);
-    }
-  }, {
     key: "addCube",
     value: function addCube(index) {
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-00.jpg');
@@ -2408,6 +2521,50 @@ function () {
       return cube;
     }
   }, {
+    key: "addRoundedCube",
+    value: function addRoundedCube(index) {
+      // const matcap = new THREE.TextureLoader().load('img/matcap/matcap-11.png');
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-03.jpg');
+      var geometry = new _roundBox.default((0, _const.cm)(20), (0, _const.cm)(20), (0, _const.cm)(20), (0, _const.cm)(4), 1, 1, 1, 3);
+      var material = new THREE.MeshMatcapMaterial({
+        color: 0xffffff,
+        matcap: matcap
+        /*
+        transparent: true,
+        opacity: 0.4,
+        side: THREE.DoubleSide,
+        */
+
+      });
+      var cube = new _interactive.default(geometry, material);
+      cube.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(136), -2);
+      cube.userData = {
+        scale: new THREE.Vector3(1, 1, 1),
+        rotation: new THREE.Vector3()
+      };
+
+      cube.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
+        cube.scale.set(cube.userData.scale.x, cube.userData.scale.y, cube.userData.scale.z);
+        cube.rotation.set(cube.userData.rotation.x, cube.userData.rotation.y, cube.userData.rotation.z);
+        cube.userData.rotation.y += 0.01 + 0.01 * index;
+        cube.userData.rotation.x += 0.01 + 0.01 * index;
+      };
+
+      cube.on('over', function () {
+        cube.material.color.setHex(0xffffff);
+      });
+      cube.on('out', function () {
+        cube.material.color.setHex(0xcccccc);
+      });
+      cube.on('down', function () {
+        cube.material.color.setHex(0x0000ff);
+      });
+      cube.on('up', function () {
+        cube.material.color.setHex(0xcccccc);
+      });
+      return cube;
+    }
+  }, {
     key: "addBG",
     value: function addBG() {
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-10.jpg');
@@ -2417,8 +2574,10 @@ function () {
         var s = (0, _const.cm)(30) + Math.random() * (0, _const.cm)(0);
         var h = 3.0 + Math.random() * 3.0;
         var r = 5 + Math.random() * 20;
-        var a = Math.PI * 2 * Math.random();
-        var cubeGeometry = new THREE.BoxGeometry(s, h, s);
+        var a = Math.PI * 2 * Math.random(); // const cubeGeometry = new THREE.BoxGeometry(s, h, s);
+
+        var cubeBufferGeometry = new _roundBox.default(s, h, s, (0, _const.cm)(4), 1, 1, 1, 3);
+        var cubeGeometry = new THREE.Geometry().fromBufferGeometry(cubeBufferGeometry);
         cubeGeometry.translate(Math.cos(a) * r, h / 2, Math.sin(a) * r);
         cubeGeometry.lookAt(origin);
         geometry.merge(cubeGeometry);
@@ -2543,5 +2702,5 @@ function () {
 var tour = new vrui();
 tour.animate();
 
-},{"./const":1,"./interactive/interactive.mesh":5,"./vr/controllers":10,"./vr/gamepads":11,"./vr/vr":12}]},{},[13]);
+},{"./const":1,"./geometries/round-box.geometry":2,"./interactive/interactive.mesh":6,"./vr/controllers":11,"./vr/gamepads":12,"./vr/vr":13}]},{},[14]);
 //# sourceMappingURL=vrui.js.map
