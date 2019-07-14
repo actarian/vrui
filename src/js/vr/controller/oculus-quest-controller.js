@@ -1,5 +1,4 @@
 /* jshint esversion: 6 */
-/* global window, document */
 
 import { cm, deg, mm } from '../../const';
 import { GAMEPAD_HANDS } from '../gamepads';
@@ -109,6 +108,8 @@ export default class OculusQuestController extends Controller {
 					i++;
 				}
 			});
+			// child.geometry.computeBoundingBox();
+			this.boundingBox.setFromObject(object);
 			mesh.add(object);
 			this.ready = true;
 		}, (xhr) => {

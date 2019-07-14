@@ -1,21 +1,20 @@
 /* jshint esversion: 6 */
-/* global window, document, TweenMax, THREE */
 
 // import * as THREE from 'three';
 // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-import { cm, TEST_ENABLED } from './const';
+import { cm, mm, TEST_ENABLED } from './const';
 import RoundBoxGeometry from './geometries/round-box.geometry';
 import InteractiveMesh from './interactive/interactive.mesh';
 import Controllers from './vr/controllers';
 import { GAMEPAD_HANDS } from './vr/gamepads';
 import { VR, VR_MODE } from './vr/vr';
 
-class vrui {
+class Vrui {
 
 	constructor() {
 		this.tick = 0;
-		// this.mouse = { x: 0, y: 0 };
+		this.mouse = { x: 0, y: 0 };
 		// this.size = { width: 0, height: 0, aspect: 0 };
 		// this.cameraDirection = new THREE.Vector3();
 		//
@@ -40,18 +39,16 @@ class vrui {
 		const raycaster = this.raycaster = new THREE.Raycaster();
 
 		const scene = this.scene = new THREE.Scene();
+		// const texture = this.addSceneBackground(renderer, scene, (texture, textureData) => {});
+		this.addSceneBackground(renderer, scene);
 
-		const camera = this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-		camera.position.set(0, cm(176), 0);
-		camera.target = new THREE.Vector3(0, cm(176), -2);
-		camera.lookAt(camera.target);
+		const camera = this.camera = this.addCamera();
+		scene.add(camera);
 
 		/*
 		const light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
 		scene.add(light);
 		*/
-
-		const hdr = this.hdr = this.getEnvMap((texture, textureData) => {});
 
 		const bg = this.bg = this.addBG();
 		scene.add(bg);
@@ -62,8 +59,76 @@ class vrui {
 		const cube1 = this.cube1 = this.addRoundedCube(1);
 		scene.add(cube1);
 
-		if (this.vr.mode !== VR_MODE.NONE || TEST_ENABLED) {
-			const controllers = this.controllers = new Controllers(renderer, scene, {
+		const toothbrush = this.toothbrush = this.addToothBrush();
+		scene.add(toothbrush);
+
+		const controllers = this.controllers = this.addControllers(renderer, vr, scene);
+
+		this.addListeners();
+
+		this.onWindowResize = this.onWindowResize.bind(this);
+		window.addEventListener('resize', this.onWindowResize, false);
+
+	}
+
+	addListeners() {
+		if (this.vr.mode === VR_MODE.NONE) {
+			this.onMouseDown = this.onMouseDown.bind(this);
+			window.addEventListener('mousedown', this.onMouseDown);
+			this.onMouseUp = this.onMouseUp.bind(this);
+			window.addEventListener('mouseup', this.onMouseUp);
+			this.onMouseMove = this.onMouseMove.bind(this);
+			window.addEventListener('mousemove', this.onMouseMove);
+		}
+	}
+
+	onMouseDown(event) {}
+
+	onMouseUp(event) {}
+
+	onMouseMove(event) {
+		const w2 = window.innerWidth / 2;
+		const h2 = window.innerHeight / 2;
+		this.mouse.x = (event.clientX - w2) / w2;
+		this.mouse.y = -(event.clientY - h2) / h2;
+	}
+
+	onWindowResize(event) {
+		try {
+			const container = this.container,
+				renderer = this.renderer,
+				camera = this.camera;
+			const width = container.offsetWidth;
+			const height = container.offsetHeight;
+			if (renderer) {
+				renderer.setSize(width, height);
+			}
+			if (camera) {
+				camera.aspect = width / height;
+				camera.updateProjectionMatrix();
+			}
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
+		}
+	}
+
+	addCamera() {
+		const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, cm(1), 500);
+		camera.position.set(0, cm(176), cm(20));
+		camera.target = new THREE.Vector3(0, cm(156), -cm(60));
+		camera.onBeforeRender = (renderer, scene) => {
+			if (this.vr.mode === VR_MODE.NONE) {
+				// camera.position.z = Math.cos(this.tick * 0.1) * 1;
+				camera.target.set(this.mouse.x * cm(40), cm(156) + this.mouse.y * cm(10), -cm(60) + this.mouse.y * cm(10));
+				camera.lookAt(camera.target);
+			}
+		};
+		return camera;
+	}
+
+	addControllers(renderer, vr, scene) {
+		if (vr.mode !== VR_MODE.NONE || TEST_ENABLED) {
+			const controllers = new Controllers(renderer, scene, {
 				debug: true
 			});
 			controllers.on('press', (button) => {
@@ -136,10 +201,8 @@ class vrui {
 					cube1.userData.rotation.y += axis.x * 0.2;
 				}
 			});
+			return controllers;
 		}
-
-		this.onWindowResize = this.onWindowResize.bind(this);
-		window.addEventListener('resize', this.onWindowResize, false);
 	}
 
 	addCube(index) {
@@ -149,36 +212,36 @@ class vrui {
 			color: 0xffffff,
 			matcap: matcap,
 		});
-		const cube = new InteractiveMesh(geometry, material);
-		cube.position.set(index === 0 ? -cm(30) : cm(30), cm(136), -2);
-		cube.userData = {
+		const mesh = new InteractiveMesh(geometry, material);
+		mesh.position.set(index === 0 ? -cm(30) : cm(30), cm(136), -2);
+		mesh.userData = {
 			scale: new THREE.Vector3(1, 1, 1),
 			rotation: new THREE.Vector3(),
 			// position: new THREE.Vector3(),
 		};
-		cube.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
-			cube.scale.set(cube.userData.scale.x, cube.userData.scale.y, cube.userData.scale.z);
-			cube.rotation.set(cube.userData.rotation.x, cube.userData.rotation.y, cube.userData.rotation.z);
+		mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+			mesh.scale.set(mesh.userData.scale.x, mesh.userData.scale.y, mesh.userData.scale.z);
+			mesh.rotation.set(mesh.userData.rotation.x, mesh.userData.rotation.y, mesh.userData.rotation.z);
 			/*
-			cube.rotation.y += Math.PI / 180 * 5;
-			cube.rotation.x += Math.PI / 180 * 1;
+			mesh.rotation.y += Math.PI / 180 * 5;
+			mesh.rotation.x += Math.PI / 180 * 1;
 			const s = 1 + Math.cos(this.tick * 0.1) * 0.5;
-			cube.scale.set(s, s, s);
+			mesh.scale.set(s, s, s);
 			*/
 		};
-		cube.on('over', () => {
-			cube.material.color.setHex(0xffffff);
+		mesh.on('over', () => {
+			mesh.material.color.setHex(0xff0000);
 		});
-		cube.on('out', () => {
-			cube.material.color.setHex(0xcccccc);
+		mesh.on('out', () => {
+			mesh.material.color.setHex(0x00ff00);
 		});
-		cube.on('down', () => {
-			cube.material.color.setHex(0x0000ff);
+		mesh.on('down', () => {
+			mesh.material.color.setHex(0x0000ff);
 		});
-		cube.on('up', () => {
-			cube.material.color.setHex(0xcccccc);
+		mesh.on('up', () => {
+			mesh.material.color.setHex(0xcccccc);
 		});
-		return cube;
+		return mesh;
 	}
 
 	addRoundedCube(index) {
@@ -194,31 +257,64 @@ class vrui {
 			side: THREE.DoubleSide,
 			*/
 		});
-		const cube = new InteractiveMesh(geometry, material);
-		cube.position.set(index === 0 ? -cm(30) : cm(30), cm(136), -2);
-		cube.userData = {
+		const mesh = new InteractiveMesh(geometry, material);
+		mesh.position.set(index === 0 ? -cm(30) : cm(30), cm(136), -2);
+		mesh.userData = {
 			scale: new THREE.Vector3(1, 1, 1),
 			rotation: new THREE.Vector3(),
 		};
-		cube.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
-			cube.scale.set(cube.userData.scale.x, cube.userData.scale.y, cube.userData.scale.z);
-			cube.rotation.set(cube.userData.rotation.x, cube.userData.rotation.y, cube.userData.rotation.z);
-			cube.userData.rotation.y += (0.01 + 0.01 * index);
-			cube.userData.rotation.x += (0.01 + 0.01 * index);
+		mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+			mesh.scale.set(mesh.userData.scale.x, mesh.userData.scale.y, mesh.userData.scale.z);
+			mesh.rotation.set(mesh.userData.rotation.x, mesh.userData.rotation.y, mesh.userData.rotation.z);
+			mesh.userData.rotation.y += (0.01 + 0.01 * index);
+			mesh.userData.rotation.x += (0.01 + 0.01 * index);
 		};
-		cube.on('over', () => {
-			cube.material.color.setHex(0xffffff);
+		mesh.on('over', () => {
+			mesh.material.color.setHex(0xff0000);
 		});
-		cube.on('out', () => {
-			cube.material.color.setHex(0xcccccc);
+		mesh.on('out', () => {
+			mesh.material.color.setHex(0x00ff00);
 		});
-		cube.on('down', () => {
-			cube.material.color.setHex(0x0000ff);
+		mesh.on('down', () => {
+			mesh.material.color.setHex(0x0000ff);
 		});
-		cube.on('up', () => {
-			cube.material.color.setHex(0xcccccc);
+		mesh.on('up', () => {
+			mesh.material.color.setHex(0xcccccc);
 		});
-		return cube;
+		return mesh;
+	}
+
+	addToothBrush() {
+		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-03.jpg');
+		const geometry = new RoundBoxGeometry(cm(16), mm(5), mm(8), cm(3), 1, 1, 1, 3)
+		const material = new THREE.MeshMatcapMaterial({
+			color: 0xffffff,
+			matcap: matcap,
+			/*
+			transparent: true,
+			opacity: 0.4,
+			side: THREE.DoubleSide,
+			*/
+		});
+		const mesh = new InteractiveMesh(geometry, material);
+		mesh.position.set(0, cm(136), -cm(40));
+		mesh.name = 'toothbrush';
+		mesh.on('grab', (controller) => {
+			console.log('grab', mesh, controller);
+		});
+		/*
+		mesh.userData = {
+			scale: new THREE.Vector3(1, 1, 1),
+			rotation: new THREE.Vector3(),
+		};
+		mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+			mesh.scale.set(mesh.userData.scale.x, mesh.userData.scale.y, mesh.userData.scale.z);
+			mesh.rotation.set(mesh.userData.rotation.x, mesh.userData.rotation.y, mesh.userData.rotation.z);
+			mesh.userData.rotation.y += (0.01 + 0.01 * index);
+			mesh.userData.rotation.x += (0.01 + 0.01 * index);
+		};
+		*/
+		return mesh;
 	}
 
 	addBG() {
@@ -252,7 +348,7 @@ class vrui {
 		return mesh;
 	}
 
-	getEnvMap(callback) {
+	addSceneBackground(renderer, scene, callback) {
 		const loader = new THREE.TextureLoader().load('img/environment/360_world.jpg', (source, textureData) => {
 			source.mapping = THREE.UVMapping;
 			const options = {
@@ -261,13 +357,13 @@ class vrui {
 				minFilter: THREE.LinearMipMapLinearFilter,
 				magFilter: THREE.LinearFilter
 			};
-			this.scene.background = new THREE.CubemapGenerator(this.renderer).fromEquirectangular(source, options);
-			const cubemapGenerator = new THREE.EquirectangularToCubeGenerator(source, options);
-			const texture = cubemapGenerator.update(this.renderer);
-			texture.mapping = THREE.CubeReflectionMapping;
-			texture.mapping = THREE.CubeRefractionMapping;
-			source.dispose();
+			scene.background = new THREE.CubemapGenerator(renderer).fromEquirectangular(source, options);
 			if (typeof callback === 'function') {
+				const cubemapGenerator = new THREE.EquirectangularToCubeGenerator(source, options);
+				const texture = cubemapGenerator.update(renderer);
+				texture.mapping = THREE.CubeReflectionMapping;
+				texture.mapping = THREE.CubeRefractionMapping;
+				source.dispose();
 				callback(texture);
 			}
 		});
@@ -279,7 +375,7 @@ class vrui {
 			const controllers = this.controllers;
 			const raycaster = controllers.setRaycaster(this.raycaster);
 			if (raycaster) {
-				const hit = InteractiveMesh.hittest(raycaster, controllers.gamepads.button);
+				const hit = InteractiveMesh.hittest(raycaster, controllers.gamepads.button, controllers.controller);
 				if (hit) {
 					controllers.feedback();
 					/*
@@ -302,7 +398,10 @@ class vrui {
 				this.updateRaycaster();
 			}
 			const renderer = this.renderer;
-			renderer.render(this.scene, this.camera);
+			const scene = this.scene;
+			const camera = this.camera;
+			camera.onBeforeRender(renderer, scene);
+			renderer.render(scene, camera);
 			this.tick++;
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
@@ -316,26 +415,7 @@ class vrui {
 		});
 	}
 
-	onWindowResize() {
-		try {
-			const container = this.container,
-				renderer = this.renderer,
-				camera = this.camera;
-			const width = container.offsetWidth;
-			const height = container.offsetHeight;
-			if (renderer) {
-				renderer.setSize(width, height);
-			}
-			if (camera) {
-				camera.aspect = width / height;
-				camera.updateProjectionMatrix();
-			}
-		} catch (error) {
-			this.debugInfo.innerHTML = error;
-		}
-	}
-
 }
 
-const tour = new vrui();
-tour.animate();
+const instance = new Vrui();
+instance.animate();

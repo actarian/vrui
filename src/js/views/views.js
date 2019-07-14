@@ -1,5 +1,4 @@
 /* jshint esversion: 6 */
-/* global window, document */
 
 import html2canvas from 'html2canvas';
 import { ORIGIN, PANEL_RADIUS, POINT_RADIUS, ROOM_RADIUS, TEST_ENABLED } from '../const';

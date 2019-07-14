@@ -11,8 +11,6 @@ exports.addCube = addCube;
 exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TEST_ENABLED = void 0;
 
 /* jshint esversion: 6 */
-
-/* global window, document */
 var TEST_ENABLED = false;
 exports.TEST_ENABLED = TEST_ENABLED;
 var ROOM_RADIUS = 200;
@@ -62,8 +60,6 @@ Object.defineProperty(exports, "__esModule", {
 exports.default = RoundBoxGeometry;
 
 /* jshint esversion: 6 */
-
-/* global window, document, TweenMax, ThreeJs */
 function RoundBoxGeometry(width, height, depth, radius, widthSegments, heightSegments, depthSegments, radiusSegments) {
   width = width || 1;
   height = height || 1;
@@ -191,8 +187,6 @@ function _defineProperties(target, props) { for (var i = 0; i < props.length; i+
 function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
 
 /* jshint esversion: 6 */
-
-/* global window, document */
 var Emittable =
 /*#__PURE__*/
 function () {
@@ -386,8 +380,6 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
 /* jshint esversion: 6 */
-
-/* global window, document */
 var FreezableMesh =
 /*#__PURE__*/
 function (_THREE$Mesh) {
@@ -479,32 +471,67 @@ function (_EmittableMesh) {
 
   _createClass(InteractiveMesh, null, [{
     key: "hittest",
-    value: function hittest(raycaster, down) {
+    value: function hittest(raycaster, down, controller) {
+      var _this2 = this;
+
       var items = InteractiveMesh.items.filter(function (x) {
         return !x.freezed;
       });
-      var intersections = raycaster.intersectObjects(items);
-      var key, hit;
-      var hash = {};
-      intersections.forEach(function (intersection, i) {
-        var object = intersection.object;
-        key = object.id;
+      var grabbedItem;
 
-        if (i === 0 && InteractiveMesh.object != object) {
-          InteractiveMesh.object = object;
-          hit = object; // haptic feedback
-        }
+      if (down && controller) {
+        var controllerBox = controller.updateBoundingBox();
+        items.reduce(function (p, x, i) {
+          var intersect = controllerBox.intersectsBox(x.updateBoundingBox());
 
-        hash[key] = intersection;
-      });
-      items.forEach(function (x) {
-        var intersection = hash[x.id]; // intersections.find(i => i.object === x);
+          if (intersect) {
+            var center = x.box.getCenter(_this2.center);
+            var distance = controllerBox.distanceToPoint(center);
 
-        x.intersection = intersection;
-        x.over = intersection !== undefined;
-        x.down = down;
-      });
-      return hit;
+            if (distance < p) {
+              grabbedItem = x;
+              return distance;
+            } else {
+              return p;
+            }
+          }
+
+          return p;
+        }, Number.POSITIVE_INFINITY); // const origin = raycaster.origin;
+        // console.log(controllerBox, down);
+      }
+
+      if (grabbedItem) {
+        // console.log(grabbedItem);
+        items.forEach(function (x) {
+          x.grab = x === grabbedItem ? controller : undefined;
+        });
+        return grabbedItem;
+      } else {
+        var intersections = raycaster.intersectObjects(items);
+        var key, hit;
+        var hash = {};
+        intersections.forEach(function (intersection, i) {
+          var object = intersection.object;
+          key = object.id;
+
+          if (i === 0 && InteractiveMesh.object != object) {
+            InteractiveMesh.object = object;
+            hit = object; // haptic feedback
+          }
+
+          hash[key] = intersection;
+        });
+        items.forEach(function (x) {
+          var intersection = hash[x.id]; // intersections.find(i => i.object === x);
+
+          x.intersection = intersection;
+          x.grab = undefined;
+          x.over = intersection !== undefined;
+          x.down = down;
+        });
+        return hit;
+      }
     }
   }]);
 
@@ -513,13 +540,41 @@ function (_EmittableMesh) {
 
     _classCallCheck(this, InteractiveMesh);
 
-    _this = _possibleConstructorReturn(this, _getPrototypeOf(InteractiveMesh).call(this, geometry, material)); // this.renderOrder = 10;
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(InteractiveMesh).call(this, geometry, material));
+    geometry.computeBoundingBox();
+    _this.box = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3()); // this.renderOrder = 10;
 
     InteractiveMesh.items.push(_assertThisInitialized(_this));
     return _this;
   }
 
   _createClass(InteractiveMesh, [{
+    key: "updateBoundingBox",
+    value: function updateBoundingBox() {
+      // In the animation loop, to keep the bounding box updated after move/rotate/scale operations
+      this.updateMatrixWorld(true);
+      this.box.copy(this.geometry.boundingBox).applyMatrix4(this.matrixWorld); // console.log('updateBoundingBox', this.box);
+
+      return this.box;
+    }
+  }, {
+    key: "grab",
+    get: function get() {
+      return this.grab_;
+    },
+    set: function set(grab) {
+      if (this.grab_ !== grab) {
+        var grab_ = this.grab_;
+        this.grab_ = grab;
+
+        if (grab) {
+          this.emit('grab', grab);
+        } else {
+          this.emit('release', grab_);
+        }
+      }
+    }
+  }, {
     key: "over",
     get: function get() {
       return this.over_;
@@ -564,6 +619,7 @@ function (_EmittableMesh) {
 
 exports.default = InteractiveMesh;
 InteractiveMesh.items = [];
+InteractiveMesh.center = new THREE.Vector3();
 
 },{"./emittable.mesh":4}],7:[function(require,module,exports){
 "use strict";
@@ -647,6 +703,8 @@ function (_THREE$Group) {
     _this.axis = new Array(2).fill(0).map(function (x) {
       return new THREE.Vector2();
     });
+    _this.boundingBox = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
+    _this.box = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
     _this.parent = parent;
     _this.gamepad = gamepad;
     _this.options = options;
@@ -666,6 +724,15 @@ function (_THREE$Group) {
   }
 
   _createClass(Controller, [{
+    key: "updateBoundingBox",
+    value: function updateBoundingBox() {
+      // In the animation loop, to keep the bounding box updated after move/rotate/scale operations
+      this.parent.updateMatrixWorld(true);
+      this.box.copy(this.boundingBox).applyMatrix4(this.parent.matrixWorld); // console.log('updateBoundingBox', this.box);
+
+      return this.box;
+    }
+  }, {
     key: "addEvents",
     value: function addEvents() {
       this.onActivate = this.onActivate.bind(this);
@@ -733,7 +800,9 @@ function (_THREE$Group) {
         // opacity: 1,
 
       });
-      var mesh = new THREE.Mesh(geometry, material);
+      var mesh = new THREE.Mesh(geometry, material); // geometry.computeBoundingBox();
+
+      this.boundingBox.setFromObject(mesh);
       this.ready = true;
       return mesh;
     }
@@ -806,6 +875,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
+var _const = require("../../const");
+
 var _gamepads = require("../gamepads");
 
 var _controller = _interopRequireDefault(require("./controller"));
@@ -874,11 +945,15 @@ function (_Controller) {
         }); // object.scale.set(0.1, 0.1, 0.1);
 
         object.scale.set(hand === _gamepads.GAMEPAD_HANDS.LEFT ? -1 : 1, 1, 1);
-        mesh.add(object);
+        mesh.add(object); // child.geometry.computeBoundingBox();
+
+        _this.boundingBox.setFromObject(object);
+
         _this.ready = true;
       }, function (xhr) {
         _this.progress = xhr.loaded / xhr.total;
       }, function (error) {
+        console.log(error);
         console.log("HandController.addModel not found ".concat(path).concat(format));
       });
       return mesh;
@@ -886,8 +961,21 @@ function (_Controller) {
   }, {
     key: "addRay",
     value: function addRay(hand) {
-      var group = new THREE.Group();
-      return group;
+      if (_const.TEST_ENABLED) {
+        var geometry = new THREE.CylinderBufferGeometry((0, _const.mm)(4), (0, _const.mm)(4), 30, 3);
+        geometry.rotateX(Math.PI / 2);
+        var material = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.5
+        });
+        var mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(0, 0, -15);
+        return mesh;
+      } else {
+        var group = new THREE.Group();
+        return group;
+      }
     }
   }, {
     key: "press",
@@ -943,7 +1031,7 @@ function (_Controller) {
 exports.default = HandController;
 HandController.FOLDER = "models/hand";
 
-},{"../gamepads":12,"./controller":8}],10:[function(require,module,exports){
+},{"../../const":1,"../gamepads":12,"./controller":8}],10:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1109,7 +1197,10 @@ function (_Controller) {
 
             i++;
           }
-        });
+        }); // child.geometry.computeBoundingBox();
+
+        _this.boundingBox.setFromObject(object);
+
         mesh.add(object);
         _this.ready = true;
       }, function (xhr) {
@@ -1311,9 +1402,12 @@ function (_Emittable) {
       gamepads.on('connect', this.onConnect);
       gamepads.on('disconnect', this.onDisconnect);
       gamepads.on('activate', this.onActivate);
+      /*
       gamepads.on('press', this.onPress);
       gamepads.on('release', this.onRelease);
       gamepads.on('axis', this.onAxis);
+      */
+
       gamepads.on('broadcast', this.onBroadcast);
     }
   }, {
@@ -1323,9 +1417,12 @@ function (_Emittable) {
       gamepads.off('connect', this.onConnect);
       gamepads.off('disconnect', this.onDisconnect);
       gamepads.off('activate', this.onActivate);
+      /*
       gamepads.off('press', this.onPress);
       gamepads.off('release', this.onRelease);
       gamepads.off('axis', this.onAxis);
+      */
+
       gamepads.off('broadcast', this.onBroadcast);
     }
   }, {
@@ -1402,14 +1499,18 @@ function (_Emittable) {
     key: "addTestController_",
     value: function addTestController_() {
       if (this.options.test) {
-        var gamepad = new _emittable.default({
-          hand: _gamepads.GAMEPAD_HANDS.RIGHT
-        }); // const controller = new CONTROLLERS.DEFAULT(this.scene, gamepad, this.options);
-        // const controller = new CONTROLLERS.OCULUS_QUEST(this.scene, gamepad, this.options);
+        var gamepad = new _gamepads.Gamepad({
+          id: 'Test Right',
+          index: 0
+        });
+        var pivot = new THREE.Group(); // const controller = new CONTROLLERS.DEFAULT(pivot, gamepad, this.options);
+        // const controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
 
-        var controller = new CONTROLLERS.HAND(this.scene, gamepad, this.options);
-        controller.scale.set(4, 4, 4);
-        controller.position.set(0, 1, -2);
+        var controller = new CONTROLLERS.HAND(pivot, gamepad, this.options); // pivot.scale.set(4, 4, 4);
+
+        pivot.position.set(0, (0, _const.cm)(136), -(0, _const.cm)(40));
+        this.scene.add(pivot);
+        controller.active = true;
         this.controller = controller;
         this.controllers_[0] = controller;
         this.mouse = {
@@ -1430,7 +1531,9 @@ function (_Emittable) {
       var controller = this.controller;
 
       if (controller) {
-        controller.press(1);
+        var button = controller.button || (controller.button = new _gamepads.GamepadButton(1, controller.gamepad));
+        controller.press(button.index);
+        this.gamepads.onEvent('press', button);
       }
     }
   }, {
@@ -1439,7 +1542,9 @@ function (_Emittable) {
       var controller = this.controller;
 
       if (controller) {
-        controller.release(1);
+        var button = controller.button;
+        controller.release(button.index);
+        this.gamepads.onEvent('release', button);
       }
     }
   }, {
@@ -1457,8 +1562,8 @@ function (_Emittable) {
       var controller = this.controller;
 
       if (controller) {
-        controller.rotation.y = -mouse.x * Math.PI;
-        controller.rotation.x = mouse.y * Math.PI / 2;
+        controller.parent.rotation.y = -mouse.x * Math.PI;
+        controller.parent.rotation.x = mouse.y * Math.PI / 2;
       }
     }
   }, {
@@ -2344,16 +2449,19 @@ function _defineProperties(target, props) { for (var i = 0; i < props.length; i+
 
 function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
 
-var vrui =
+var Vrui =
 /*#__PURE__*/
 function () {
-  function vrui() {
+  function Vrui() {
     var _this = this;
 
-    _classCallCheck(this, vrui);
+    _classCallCheck(this, Vrui);
 
-    this.tick = 0; // this.mouse = { x: 0, y: 0 };
-    // this.size = { width: 0, height: 0, aspect: 0 };
+    this.tick = 0;
+    this.mouse = {
+      x: 0,
+      y: 0
+    }; // this.size = { width: 0, height: 0, aspect: 0 };
     // this.cameraDirection = new THREE.Vector3();
     //
 
@@ -2376,109 +2484,182 @@ function () {
     });
     container.appendChild(vr.element);
     var raycaster = this.raycaster = new THREE.Raycaster();
-    var scene = this.scene = new THREE.Scene();
-    var camera = this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, (0, _const.cm)(176), 0);
-    camera.target = new THREE.Vector3(0, (0, _const.cm)(176), -2);
-    camera.lookAt(camera.target);
+    var scene = this.scene = new THREE.Scene(); // const texture = this.addSceneBackground(renderer, scene, (texture, textureData) => {});
+
+    this.addSceneBackground(renderer, scene);
+    var camera = this.camera = this.addCamera();
+    scene.add(camera);
     /*
     const light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
     scene.add(light);
     */
 
-    var hdr = this.hdr = this.getEnvMap(function (texture, textureData) {});
     var bg = this.bg = this.addBG();
     scene.add(bg);
     var cube0 = this.cube0 = this.addRoundedCube(0);
     scene.add(cube0);
     var cube1 = this.cube1 = this.addRoundedCube(1);
     scene.add(cube1);
-
-    if (this.vr.mode !== _vr.VR_MODE.NONE || _const.TEST_ENABLED) {
-      var controllers = this.controllers = new _controllers.default(renderer, scene, {
-        debug: true
-      });
-      controllers.on('press', function (button) {
-        console.log('vrui.press', button.gamepad.hand, button.index);
-
-        switch (button.gamepad.hand) {
-          case _gamepads.GAMEPAD_HANDS.LEFT:
-            // 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
-
-            /*
-            switch (button.index) {
-            	case 1:
-            		break;
-            }
-            */
-            break;
-
-          case _gamepads.GAMEPAD_HANDS.RIGHT:
-            // 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
-            break;
-        }
-      });
-      controllers.on('release', function (button) {
-        console.log('vrui.release', button.gamepad.hand, button.index);
-      });
-      controllers.on('left', function (axis) {
-        if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-          console.log('vrui.left', axis.gamepad.hand, axis.index);
-          TweenMax.to(cube0.userData.rotation, 0.3, {
-            y: cube0.userData.rotation.y - Math.PI / 2,
-            ease: Power2.easeInOut
-          });
-        }
-      });
-      controllers.on('right', function (axis) {
-        if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-          console.log('vrui.right', axis.gamepad.hand, axis.index);
-          TweenMax.to(cube0.userData.rotation, 0.3, {
-            y: cube0.userData.rotation.y + Math.PI / 2,
-            ease: Power2.easeInOut
-          });
-        }
-      });
-      controllers.on('up', function (axis) {
-        if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-          console.log('vrui.up', axis.gamepad.hand, axis.index);
-          var s = Math.min(2.0, cube0.userData.scale.x + 0.1);
-          TweenMax.to(cube0.userData.scale, 0.3, {
-            x: s,
-            y: s,
-            z: s,
-            ease: Power2.easeInOut
-          });
-        }
-      });
-      controllers.on('down', function (axis) {
-        if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-          console.log('vrui.down', axis.gamepad.hand, axis.index);
-          var s = Math.max(0.1, cube0.userData.scale.x - 0.1);
-          TweenMax.to(cube0.userData.scale, 0.3, {
-            x: s,
-            y: s,
-            z: s,
-            ease: Power2.easeInOut
-          });
-        }
-      });
-      controllers.on('axis', function (axis) {
-        console.log('vrui.axis', axis.gamepad.hand, axis.index);
-
-        if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.RIGHT) {
-          var s = Math.max(0.1, Math.min(2, cube1.scale.x + axis.y * 0.1));
-          cube1.userData.scale.set(s, s, s);
-          cube1.userData.rotation.y += axis.x * 0.2;
-        }
-      });
-    }
-
+    var toothbrush = this.toothbrush = this.addToothBrush();
+    scene.add(toothbrush);
+    var controllers = this.controllers = this.addControllers(renderer, vr, scene);
+    this.addListeners();
     this.onWindowResize = this.onWindowResize.bind(this);
     window.addEventListener('resize', this.onWindowResize, false);
   }
 
-  _createClass(vrui, [{
+  _createClass(Vrui, [{
+    key: "addListeners",
+    value: function addListeners() {
+      if (this.vr.mode === _vr.VR_MODE.NONE) {
+        this.onMouseDown = this.onMouseDown.bind(this);
+        window.addEventListener('mousedown', this.onMouseDown);
+        this.onMouseUp = this.onMouseUp.bind(this);
+        window.addEventListener('mouseup', this.onMouseUp);
+        this.onMouseMove = this.onMouseMove.bind(this);
+        window.addEventListener('mousemove', this.onMouseMove);
+      }
+    }
+  }, {
+    key: "onMouseDown",
+    value: function onMouseDown(event) {}
+  }, {
+    key: "onMouseUp",
+    value: function onMouseUp(event) {}
+  }, {
+    key: "onMouseMove",
+    value: function onMouseMove(event) {
+      var w2 = window.innerWidth / 2;
+      var h2 = window.innerHeight / 2;
+      this.mouse.x = (event.clientX - w2) / w2;
+      this.mouse.y = -(event.clientY - h2) / h2;
+    }
+  }, {
+    key: "onWindowResize",
+    value: function onWindowResize(event) {
+      try {
+        var container = this.container,
+            renderer = this.renderer,
+            camera = this.camera;
+        var width = container.offsetWidth;
+        var height = container.offsetHeight;
+
+        if (renderer) {
+          renderer.setSize(width, height);
+        }
+
+        if (camera) {
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+        }
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
+      }
+    }
+  }, {
+    key: "addCamera",
+    value: function addCamera() {
+      var _this2 = this;
+
+      var camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, (0, _const.cm)(1), 500);
+      camera.position.set(0, (0, _const.cm)(176), (0, _const.cm)(20));
+      camera.target = new THREE.Vector3(0, (0, _const.cm)(156), -(0, _const.cm)(60));
+
+      camera.onBeforeRender = function (renderer, scene) {
+        if (_this2.vr.mode === _vr.VR_MODE.NONE) {
+          // camera.position.z = Math.cos(this.tick * 0.1) * 1;
+          camera.target.set(_this2.mouse.x * (0, _const.cm)(40), (0, _const.cm)(156) + _this2.mouse.y * (0, _const.cm)(10), -(0, _const.cm)(60) + _this2.mouse.y * (0, _const.cm)(10));
+          camera.lookAt(camera.target);
+        }
+      };
+
+      return camera;
+    }
+  }, {
+    key: "addControllers",
+    value: function addControllers(renderer, vr, scene) {
+      if (vr.mode !== _vr.VR_MODE.NONE || _const.TEST_ENABLED) {
+        var controllers = new _controllers.default(renderer, scene, {
+          debug: true
+        });
+        controllers.on('press', function (button) {
+          console.log('vrui.press', button.gamepad.hand, button.index);
+
+          switch (button.gamepad.hand) {
+            case _gamepads.GAMEPAD_HANDS.LEFT:
+              // 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
+
+              /*
+              switch (button.index) {
+              	case 1:
+              		break;
+              }
+              */
+              break;
+
+            case _gamepads.GAMEPAD_HANDS.RIGHT:
+              // 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
+              break;
+          }
+        });
+        controllers.on('release', function (button) {
+          console.log('vrui.release', button.gamepad.hand, button.index);
+        });
+        controllers.on('left', function (axis) {
+          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+            console.log('vrui.left', axis.gamepad.hand, axis.index);
+            TweenMax.to(cube0.userData.rotation, 0.3, {
+              y: cube0.userData.rotation.y - Math.PI / 2,
+              ease: Power2.easeInOut
+            });
+          }
+        });
+        controllers.on('right', function (axis) {
+          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+            console.log('vrui.right', axis.gamepad.hand, axis.index);
+            TweenMax.to(cube0.userData.rotation, 0.3, {
+              y: cube0.userData.rotation.y + Math.PI / 2,
+              ease: Power2.easeInOut
+            });
+          }
+        });
+        controllers.on('up', function (axis) {
+          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+            console.log('vrui.up', axis.gamepad.hand, axis.index);
+            var s = Math.min(2.0, cube0.userData.scale.x + 0.1);
+            TweenMax.to(cube0.userData.scale, 0.3, {
+              x: s,
+              y: s,
+              z: s,
+              ease: Power2.easeInOut
+            });
+          }
+        });
+        controllers.on('down', function (axis) {
+          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+            console.log('vrui.down', axis.gamepad.hand, axis.index);
+            var s = Math.max(0.1, cube0.userData.scale.x - 0.1);
+            TweenMax.to(cube0.userData.scale, 0.3, {
+              x: s,
+              y: s,
+              z: s,
+              ease: Power2.easeInOut
+            });
+          }
+        });
+        controllers.on('axis', function (axis) {
+          console.log('vrui.axis', axis.gamepad.hand, axis.index);
+
+          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.RIGHT) {
+            var s = Math.max(0.1, Math.min(2, cube1.scale.x + axis.y * 0.1));
+            cube1.userData.scale.set(s, s, s);
+            cube1.userData.rotation.y += axis.x * 0.2;
+          }
+        });
+        return controllers;
+      }
+    }
+  }, {
     key: "addCube",
     value: function addCube(index) {
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-00.jpg');
@@ -2487,38 +2668,38 @@ function () {
         color: 0xffffff,
         matcap: matcap
       });
-      var cube = new _interactive.default(geometry, material);
-      cube.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(136), -2);
-      cube.userData = {
+      var mesh = new _interactive.default(geometry, material);
+      mesh.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(136), -2);
+      mesh.userData = {
         scale: new THREE.Vector3(1, 1, 1),
         rotation: new THREE.Vector3() // position: new THREE.Vector3(),
 
       };
 
-      cube.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
-        cube.scale.set(cube.userData.scale.x, cube.userData.scale.y, cube.userData.scale.z);
-        cube.rotation.set(cube.userData.rotation.x, cube.userData.rotation.y, cube.userData.rotation.z);
+      mesh.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
+        mesh.scale.set(mesh.userData.scale.x, mesh.userData.scale.y, mesh.userData.scale.z);
+        mesh.rotation.set(mesh.userData.rotation.x, mesh.userData.rotation.y, mesh.userData.rotation.z);
         /*
-        cube.rotation.y += Math.PI / 180 * 5;
-        cube.rotation.x += Math.PI / 180 * 1;
+        mesh.rotation.y += Math.PI / 180 * 5;
+        mesh.rotation.x += Math.PI / 180 * 1;
         const s = 1 + Math.cos(this.tick * 0.1) * 0.5;
-        cube.scale.set(s, s, s);
+        mesh.scale.set(s, s, s);
         */
       };
 
-      cube.on('over', function () {
-        cube.material.color.setHex(0xffffff);
+      mesh.on('over', function () {
+        mesh.material.color.setHex(0xff0000);
       });
-      cube.on('out', function () {
-        cube.material.color.setHex(0xcccccc);
+      mesh.on('out', function () {
+        mesh.material.color.setHex(0x00ff00);
       });
-      cube.on('down', function () {
-        cube.material.color.setHex(0x0000ff);
+      mesh.on('down', function () {
+        mesh.material.color.setHex(0x0000ff);
       });
-      cube.on('up', function () {
-        cube.material.color.setHex(0xcccccc);
+      mesh.on('up', function () {
+        mesh.material.color.setHex(0xcccccc);
       });
-      return cube;
+      return mesh;
     }
   }, {
     key: "addRoundedCube",
@@ -2536,33 +2717,69 @@ function () {
         */
 
       });
-      var cube = new _interactive.default(geometry, material);
-      cube.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(136), -2);
-      cube.userData = {
+      var mesh = new _interactive.default(geometry, material);
+      mesh.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(136), -2);
+      mesh.userData = {
         scale: new THREE.Vector3(1, 1, 1),
         rotation: new THREE.Vector3()
       };
 
-      cube.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
-        cube.scale.set(cube.userData.scale.x, cube.userData.scale.y, cube.userData.scale.z);
-        cube.rotation.set(cube.userData.rotation.x, cube.userData.rotation.y, cube.userData.rotation.z);
-        cube.userData.rotation.y += 0.01 + 0.01 * index;
-        cube.userData.rotation.x += 0.01 + 0.01 * index;
+      mesh.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
+        mesh.scale.set(mesh.userData.scale.x, mesh.userData.scale.y, mesh.userData.scale.z);
+        mesh.rotation.set(mesh.userData.rotation.x, mesh.userData.rotation.y, mesh.userData.rotation.z);
+        mesh.userData.rotation.y += 0.01 + 0.01 * index;
+        mesh.userData.rotation.x += 0.01 + 0.01 * index;
       };
 
-      cube.on('over', function () {
-        cube.material.color.setHex(0xffffff);
+      mesh.on('over', function () {
+        mesh.material.color.setHex(0xff0000);
       });
-      cube.on('out', function () {
-        cube.material.color.setHex(0xcccccc);
+      mesh.on('out', function () {
+        mesh.material.color.setHex(0x00ff00);
       });
-      cube.on('down', function () {
-        cube.material.color.setHex(0x0000ff);
+      mesh.on('down', function () {
+        mesh.material.color.setHex(0x0000ff);
       });
-      cube.on('up', function () {
-        cube.material.color.setHex(0xcccccc);
+      mesh.on('up', function () {
+        mesh.material.color.setHex(0xcccccc);
       });
-      return cube;
+      return mesh;
+    }
+  }, {
+    key: "addToothBrush",
+    value: function addToothBrush() {
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-03.jpg');
+      var geometry = new _roundBox.default((0, _const.cm)(16), (0, _const.mm)(5), (0, _const.mm)(8), (0, _const.cm)(3), 1, 1, 1, 3);
+      var material = new THREE.MeshMatcapMaterial({
+        color: 0xffffff,
+        matcap: matcap
+        /*
+        transparent: true,
+        opacity: 0.4,
+        side: THREE.DoubleSide,
+        */
+
+      });
+      var mesh = new _interactive.default(geometry, material);
+      mesh.position.set(0, (0, _const.cm)(136), -(0, _const.cm)(40));
+      mesh.name = 'toothbrush';
+      mesh.on('grab', function (controller) {
+        console.log('grab', mesh, controller);
+      });
+      /*
+      mesh.userData = {
+      	scale: new THREE.Vector3(1, 1, 1),
+      	rotation: new THREE.Vector3(),
+      };
+      mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+      	mesh.scale.set(mesh.userData.scale.x, mesh.userData.scale.y, mesh.userData.scale.z);
+      	mesh.rotation.set(mesh.userData.rotation.x, mesh.userData.rotation.y, mesh.userData.rotation.z);
+      	mesh.userData.rotation.y += (0.01 + 0.01 * index);
+      	mesh.userData.rotation.x += (0.01 + 0.01 * index);
+      };
+      */
+
+      return mesh;
     }
   }, {
     key: "addBG",
@@ -2597,10 +2814,8 @@ function () {
       return mesh;
     }
   }, {
-    key: "getEnvMap",
-    value: function getEnvMap(callback) {
-      var _this2 = this;
-
+    key: "addSceneBackground",
+    value: function addSceneBackground(renderer, scene, callback) {
       var loader = new THREE.TextureLoader().load('img/environment/360_world.jpg', function (source, textureData) {
         source.mapping = THREE.UVMapping;
         var options = {
@@ -2609,14 +2824,14 @@ function () {
           minFilter: THREE.LinearMipMapLinearFilter,
           magFilter: THREE.LinearFilter
         };
-        _this2.scene.background = new THREE.CubemapGenerator(_this2.renderer).fromEquirectangular(source, options);
-        var cubemapGenerator = new THREE.EquirectangularToCubeGenerator(source, options);
-        var texture = cubemapGenerator.update(_this2.renderer);
-        texture.mapping = THREE.CubeReflectionMapping;
-        texture.mapping = THREE.CubeRefractionMapping;
-        source.dispose();
+        scene.background = new THREE.CubemapGenerator(renderer).fromEquirectangular(source, options);
 
         if (typeof callback === 'function') {
+          var cubemapGenerator = new THREE.EquirectangularToCubeGenerator(source, options);
+          var texture = cubemapGenerator.update(renderer);
+          texture.mapping = THREE.CubeReflectionMapping;
+          texture.mapping = THREE.CubeRefractionMapping;
+          source.dispose();
           callback(texture);
         }
       });
@@ -2630,7 +2845,7 @@ function () {
         var raycaster = controllers.setRaycaster(this.raycaster);
 
         if (raycaster) {
-          var hit = _interactive.default.hittest(raycaster, controllers.gamepads.button);
+          var hit = _interactive.default.hittest(raycaster, controllers.gamepads.button, controllers.controller);
 
           if (hit) {
             controllers.feedback();
@@ -2656,7 +2871,10 @@ function () {
         }
 
         var renderer = this.renderer;
-        renderer.render(this.scene, this.camera);
+        var scene = this.scene;
+        var camera = this.camera;
+        camera.onBeforeRender(renderer, scene);
+        renderer.render(scene, camera);
         this.tick++;
       } catch (error) {
         this.debugInfo.innerHTML = error;
@@ -2672,35 +2890,13 @@ function () {
         _this3.render();
       });
     }
-  }, {
-    key: "onWindowResize",
-    value: function onWindowResize() {
-      try {
-        var container = this.container,
-            renderer = this.renderer,
-            camera = this.camera;
-        var width = container.offsetWidth;
-        var height = container.offsetHeight;
-
-        if (renderer) {
-          renderer.setSize(width, height);
-        }
-
-        if (camera) {
-          camera.aspect = width / height;
-          camera.updateProjectionMatrix();
-        }
-      } catch (error) {
-        this.debugInfo.innerHTML = error;
-      }
-    }
   }]);
 
-  return vrui;
+  return Vrui;
 }();
 
-var tour = new vrui();
-tour.animate();
+var instance = new Vrui();
+instance.animate();
 
 },{"./const":1,"./geometries/round-box.geometry":2,"./interactive/interactive.mesh":6,"./vr/controllers":11,"./vr/gamepads":12,"./vr/vr":13}]},{},[14]);
 //# sourceMappingURL=vrui.js.map

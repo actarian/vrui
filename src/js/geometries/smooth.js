@@ -1,5 +1,4 @@
 /* jshint esversion: 6 */
-/* global window, document, TweenMax, THREE */
 
 const modifier = new THREE.SubdivisionModifier(2);
 const geometry = new THREE.CylinderGeometry(4, 4, 30, 12);

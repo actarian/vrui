@@ -1,6 +1,6 @@
 /* jshint esversion: 6 */
-/* global window, document */
 
+import { mm, TEST_ENABLED } from '../../const';
 import { GAMEPAD_HANDS } from '../gamepads';
 import Controller from './controller';
 
@@ -39,18 +39,34 @@ export default class HandController extends Controller {
 			// object.scale.set(0.1, 0.1, 0.1);
 			object.scale.set(hand === GAMEPAD_HANDS.LEFT ? -1 : 1, 1, 1);
 			mesh.add(object);
+			// child.geometry.computeBoundingBox();
+			this.boundingBox.setFromObject(object);
 			this.ready = true;
 		}, (xhr) => {
 			this.progress = xhr.loaded / xhr.total;
 		}, (error) => {
+			console.log(error);
 			console.log(`HandController.addModel not found ${path}${format}`);
 		});
 		return mesh;
 	}
 
 	addRay(hand) {
-		const group = new THREE.Group();
-		return group;
+		if (TEST_ENABLED) {
+			const geometry = new THREE.CylinderBufferGeometry(mm(4), mm(4), 30, 3);
+			geometry.rotateX(Math.PI / 2);
+			const material = new THREE.MeshBasicMaterial({
+				color: 0xffffff,
+				transparent: true,
+				opacity: 0.5,
+			});
+			const mesh = new THREE.Mesh(geometry, material);
+			mesh.position.set(0, 0, -15);
+			return mesh;
+		} else {
+			const group = new THREE.Group();
+			return group;
+		}
 	}
 
 	press(index) {

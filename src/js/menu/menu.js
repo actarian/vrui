@@ -1,5 +1,4 @@
 /* jshint esversion: 6 */
-/* global window, document */
 
 import { cm } from '../const';
 import EmittableGroup from '../interactive/emittable.group';

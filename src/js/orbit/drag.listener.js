@@ -1,5 +1,4 @@
 /* jshint esversion: 6 */
-/* global window, document, TweenMax, ThreeJs */
 
 export default class DragListener {
 

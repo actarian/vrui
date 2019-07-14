@@ -1,5 +1,4 @@
 /* jshint esversion: 6 */
-/* global window, document */
 
 import { POINT_RADIUS } from '../const';
 import InteractiveMesh from '../interactive/interactive.mesh';

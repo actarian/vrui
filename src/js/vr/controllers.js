@@ -1,12 +1,11 @@
 /* jshint esversion: 6 */
-/* global window, document */
 
-import { POINTER_RADIUS, TEST_ENABLED } from '../const';
+import { cm, POINTER_RADIUS, TEST_ENABLED } from '../const';
 import Emittable from '../interactive/emittable';
 import Controller from './controller/controller';
 import HandController from './controller/hand-controller';
 import OculusQuestController from './controller/oculus-quest-controller';
-import Gamepads, { GAMEPAD_HANDS } from './gamepads';
+import Gamepads, { Gamepad, GamepadButton } from './gamepads';
 
 const CONTROLLERS = {
 	DEFAULT: Controller,
@@ -106,9 +105,11 @@ export default class Controllers extends Emittable {
 		gamepads.on('connect', this.onConnect);
 		gamepads.on('disconnect', this.onDisconnect);
 		gamepads.on('activate', this.onActivate);
+		/*
 		gamepads.on('press', this.onPress);
 		gamepads.on('release', this.onRelease);
 		gamepads.on('axis', this.onAxis);
+		*/
 		gamepads.on('broadcast', this.onBroadcast);
 	}
 	removeEvents() {
@@ -116,9 +117,11 @@ export default class Controllers extends Emittable {
 		gamepads.off('connect', this.onConnect);
 		gamepads.off('disconnect', this.onDisconnect);
 		gamepads.off('activate', this.onActivate);
+		/*
 		gamepads.off('press', this.onPress);
 		gamepads.off('release', this.onRelease);
 		gamepads.off('axis', this.onAxis);
+		*/
 		gamepads.off('broadcast', this.onBroadcast);
 	}
 	onConnect(gamepad) {
@@ -175,12 +178,15 @@ export default class Controllers extends Emittable {
 
 	addTestController_() {
 		if (this.options.test) {
-			const gamepad = new Emittable({ hand: GAMEPAD_HANDS.RIGHT });
-			// const controller = new CONTROLLERS.DEFAULT(this.scene, gamepad, this.options);
-			// const controller = new CONTROLLERS.OCULUS_QUEST(this.scene, gamepad, this.options);
-			const controller = new CONTROLLERS.HAND(this.scene, gamepad, this.options);
-			controller.scale.set(4, 4, 4);
-			controller.position.set(0, 1, -2);
+			const gamepad = new Gamepad({ id: 'Test Right', index: 0 });
+			const pivot = new THREE.Group();
+			// const controller = new CONTROLLERS.DEFAULT(pivot, gamepad, this.options);
+			// const controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
+			const controller = new CONTROLLERS.HAND(pivot, gamepad, this.options);
+			// pivot.scale.set(4, 4, 4);
+			pivot.position.set(0, cm(136), -cm(40));
+			this.scene.add(pivot);
+			controller.active = true;
 			this.controller = controller;
 			this.controllers_[0] = controller;
 			this.mouse = { x: 0, y: 0 };
@@ -196,14 +202,18 @@ export default class Controllers extends Emittable {
 	onMouseDown(event) {
 		const controller = this.controller;
 		if (controller) {
-			controller.press(1);
+			const button = controller.button || (controller.button = new GamepadButton(1, controller.gamepad));
+			controller.press(button.index);
+			this.gamepads.onEvent('press', button);
 		}
 	}
 
 	onMouseUp(event) {
 		const controller = this.controller;
 		if (controller) {
-			controller.release(1);
+			const button = controller.button;
+			controller.release(button.index);
+			this.gamepads.onEvent('release', button);
 		}
 	}
 
@@ -218,8 +228,8 @@ export default class Controllers extends Emittable {
 	updateTest(mouse) {
 		const controller = this.controller;
 		if (controller) {
-			controller.rotation.y = -mouse.x * Math.PI;
-			controller.rotation.x = mouse.y * Math.PI / 2;
+			controller.parent.rotation.y = -mouse.x * Math.PI;
+			controller.parent.rotation.x = mouse.y * Math.PI / 2;
 		}
 	}
 

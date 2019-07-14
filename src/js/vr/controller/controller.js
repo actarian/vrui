@@ -1,5 +1,4 @@
 /* jshint esversion: 6 */
-/* global window, document */
 
 import { cm, mm } from '../../const';
 import { GAMEPAD_HANDS } from '../gamepads';
@@ -28,6 +27,8 @@ export default class Controller extends THREE.Group {
 			return { value: 0 };
 		});
 		this.axis = new Array(2).fill(0).map(x => new THREE.Vector2());
+		this.boundingBox = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
+		this.box = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
 		this.parent = parent;
 		this.gamepad = gamepad;
 		this.options = options;
@@ -37,6 +38,14 @@ export default class Controller extends THREE.Group {
 		this.add(model);
 		parent.add(this);
 		this.addEvents();
+	}
+
+	updateBoundingBox() {
+		// In the animation loop, to keep the bounding box updated after move/rotate/scale operations
+		this.parent.updateMatrixWorld(true);
+		this.box.copy(this.boundingBox).applyMatrix4(this.parent.matrixWorld);
+		// console.log('updateBoundingBox', this.box);
+		return this.box;
 	}
 
 	addEvents() {
@@ -94,6 +103,8 @@ export default class Controller extends THREE.Group {
 			// opacity: 1,
 		});
 		const mesh = new THREE.Mesh(geometry, material);
+		// geometry.computeBoundingBox();
+		this.boundingBox.setFromObject(mesh);
 		this.ready = true;
 		return mesh;
 	}

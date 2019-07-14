@@ -1,5 +1,4 @@
 /* jshint esversion: 6 */
-/* global window, document */
 
 export const TEST_ENABLED = false;
 export const ROOM_RADIUS = 200;
