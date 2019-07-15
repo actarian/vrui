@@ -128,6 +128,8 @@ class Vrui {
 
 	addControllers(renderer, vr, scene) {
 		if (vr.mode !== VR_MODE.NONE || TEST_ENABLED) {
+			const cube0 = this.cube0;
+			const cube1 = this.cube1;
 			const controllers = new Controllers(renderer, scene, {
 				debug: true
 			});
@@ -263,11 +265,14 @@ class Vrui {
 			scale: new THREE.Vector3(1, 1, 1),
 			rotation: new THREE.Vector3(),
 		};
+		const box = new THREE.BoxHelper(mesh, 0x0000ff);
+		this.scene.add(box);
 		mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
 			mesh.scale.set(mesh.userData.scale.x, mesh.userData.scale.y, mesh.userData.scale.z);
 			mesh.rotation.set(mesh.userData.rotation.x, mesh.userData.rotation.y, mesh.userData.rotation.z);
 			mesh.userData.rotation.y += (0.01 + 0.01 * index);
 			mesh.userData.rotation.x += (0.01 + 0.01 * index);
+			box.update();
 		};
 		mesh.on('over', () => {
 			mesh.material.color.setHex(0xff0000);
@@ -286,7 +291,7 @@ class Vrui {
 
 	addToothBrush() {
 		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-03.jpg');
-		const geometry = new RoundBoxGeometry(cm(16), mm(5), mm(8), cm(3), 1, 1, 1, 3)
+		const geometry = new RoundBoxGeometry(cm(18), mm(6), cm(1), mm(3), 1, 1, 1, 3)
 		const material = new THREE.MeshMatcapMaterial({
 			color: 0xffffff,
 			matcap: matcap,
@@ -314,6 +319,11 @@ class Vrui {
 			mesh.userData.rotation.x += (0.01 + 0.01 * index);
 		};
 		*/
+		const box = new THREE.BoxHelper(mesh, 0x0000ff);
+		this.scene.add(box);
+		mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+			box.update();
+		};
 		return mesh;
 	}
 

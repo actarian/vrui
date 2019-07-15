@@ -1,9 +1,23 @@
 /* jshint esversion: 6 */
 
 import { cm, mm } from '../../const';
+import EmittableGroup from '../../interactive/emittable.group';
 import { GAMEPAD_HANDS } from '../gamepads';
 
-export default class Controller extends THREE.Group {
+export default class Controller extends EmittableGroup {
+
+	get ready() {
+		return this.ready_;
+	}
+
+	set ready(ready) {
+		if (this.ready_ !== ready) {
+			this.ready_ = ready;
+			if (ready) {
+				this.emit('ready', this);
+			}
+		}
+	}
 
 	get active() {
 		return this.active_;
@@ -22,7 +36,7 @@ export default class Controller extends THREE.Group {
 
 	constructor(parent, gamepad, options = {}) {
 		super();
-		this.ready = false;
+		// this.ready = false;
 		this.buttons = new Array(10).fill(0).map(x => {
 			return { value: 0 };
 		});

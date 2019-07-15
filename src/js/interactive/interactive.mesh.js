@@ -8,12 +8,18 @@ export default class InteractiveMesh extends EmittableMesh {
 		const items = InteractiveMesh.items.filter(x => !x.freezed);
 		let grabbedItem;
 		if (down && controller) {
+			const controllerPosition = controller.parent.position;
 			const controllerBox = controller.updateBoundingBox();
+			// const controllerBoxCenter = controllerBox.getCenter(this.center);
+			// console.log(controllerBoxCenter.x, controllerBoxCenter.y, controllerBoxCenter.z);
 			items.reduce((p, x, i) => {
-				const intersect = controllerBox.intersectsBox(x.updateBoundingBox());
-				if (intersect) {
-					const center = x.box.getCenter(this.center);
-					const distance = controllerBox.distanceToPoint(center);
+				const distance = x.position.distanceTo(controllerPosition);
+				// const intersect = controllerBox.intersectsBox(x.updateBoundingBox());
+				if (distance <= 0.1) { // intersect) {
+					// const center = x.box.getCenter(this.center);
+					// const distance = controllerBox.distanceToPoint(center);
+					// console.log(distance);
+					// console.log(center, intersect, distance, p);
 					if (distance < p) {
 						grabbedItem = x;
 						return distance;

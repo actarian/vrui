@@ -12,7 +12,7 @@ export default class HandController extends Controller {
 
 	addModel(hand) {
 		const format = '.fbx';
-		const path = `${HandController.FOLDER}/${hand}/${hand}-animated__`;
+		const path = `${HandController.FOLDER}/${hand}/${hand}-animated`;
 		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
 		// const texture = new THREE.TextureLoader().load(`${path}.jpg`);
 		const material = new THREE.MeshMatcapMaterial({
@@ -20,13 +20,14 @@ export default class HandController extends Controller {
 			// map: texture,
 			matcap: matcap,
 			skinning: true,
+			side: THREE.DoubleSide,
 		});
 		const mesh = new THREE.Group();
 		const loader = format === '.fbx' ? new THREE.FBXLoader() : new THREE.OBJLoader();
 		let i = 0;
 		loader.load(`${path}${format}`, (object) => {
 			const mixer = this.mixer = new THREE.AnimationMixer(object);
-			mixer.timeScale = 2;
+			mixer.timeScale = 1;
 			const clip = this.clip = mixer.clipAction(object.animations[0]);
 			clip.setLoop(THREE.LoopOnce);
 			clip.clampWhenFinished = true;
@@ -34,13 +35,15 @@ export default class HandController extends Controller {
 				if (child instanceof THREE.Mesh) {
 					child.material = material.clone();
 					// child.geometry.scale(0.1, 0.1, 0.1);
+					// child.geometry.computeBoundingBox();
 				}
 			});
 			// object.scale.set(0.1, 0.1, 0.1);
-			object.scale.set(hand === GAMEPAD_HANDS.LEFT ? -1 : 1, 1, 1);
+			const s = hand === GAMEPAD_HANDS.LEFT ? 1.0 : 0.045;
+			object.scale.set(hand === GAMEPAD_HANDS.LEFT ? -s : s, s, s);
 			mesh.add(object);
-			// child.geometry.computeBoundingBox();
 			this.boundingBox.setFromObject(object);
+			this.skeleton = new THREE.SkeletonHelper(object);
 			this.ready = true;
 		}, (xhr) => {
 			this.progress = xhr.loaded / xhr.total;

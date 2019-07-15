@@ -180,6 +180,102 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
+var _freezable = _interopRequireDefault(require("./freezable.group"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var EmittableGroup =
+/*#__PURE__*/
+function (_FreezableGroup) {
+  _inherits(EmittableGroup, _FreezableGroup);
+
+  function EmittableGroup() {
+    var _this;
+
+    _classCallCheck(this, EmittableGroup);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(EmittableGroup).call(this));
+    _this.events = {};
+    return _this;
+  }
+
+  _createClass(EmittableGroup, [{
+    key: "on",
+    value: function on(type, callback) {
+      var _this2 = this;
+
+      var event = this.events[type] = this.events[type] || [];
+      event.push(callback);
+      return function () {
+        _this2.events[type] = event.filter(function (x) {
+          return x !== callback;
+        });
+      };
+    }
+  }, {
+    key: "off",
+    value: function off(type, callback) {
+      var event = this.events[type];
+
+      if (event) {
+        this.events[type] = event.filter(function (x) {
+          return x !== callback;
+        });
+      }
+    }
+  }, {
+    key: "emit",
+    value: function emit(type, data) {
+      var event = this.events[type];
+
+      if (event) {
+        event.forEach(function (callback) {
+          // callback.call(this, data);
+          callback(data);
+        });
+      }
+
+      var broadcast = this.events.broadcast;
+
+      if (broadcast) {
+        broadcast.forEach(function (callback) {
+          callback(type, data);
+        });
+      }
+    }
+  }]);
+
+  return EmittableGroup;
+}(_freezable.default);
+
+exports.default = EmittableGroup;
+
+},{"./freezable.group":6}],4:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
@@ -250,7 +346,7 @@ function () {
 
 exports.default = Emittable;
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -353,7 +449,82 @@ function (_FreezableMesh) {
 
 exports.default = EmittableMesh;
 
-},{"./freezable.mesh":5}],5:[function(require,module,exports){
+},{"./freezable.mesh":7}],6:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+/* jshint esversion: 6 */
+var FreezableGroup =
+/*#__PURE__*/
+function (_THREE$Group) {
+  _inherits(FreezableGroup, _THREE$Group);
+
+  _createClass(FreezableGroup, [{
+    key: "freezed",
+    get: function get() {
+      return this.freezed_;
+    },
+    set: function set(freezed) {
+      // !!! cycle through freezable and not freezable
+      this.freezed_ = freezed;
+      this.children.filter(function (x) {
+        return x.__lookupGetter__('freezed');
+      }).forEach(function (x) {
+        return x.freezed = freezed;
+      });
+    }
+  }]);
+
+  function FreezableGroup() {
+    var _this;
+
+    _classCallCheck(this, FreezableGroup);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(FreezableGroup).call(this));
+    _this.freezed = false;
+    return _this;
+  }
+
+  _createClass(FreezableGroup, [{
+    key: "freeze",
+    value: function freeze() {
+      this.freezed = true;
+    }
+  }, {
+    key: "unfreeze",
+    value: function unfreeze() {
+      this.freezed = false;
+    }
+  }]);
+
+  return FreezableGroup;
+}(THREE.Group);
+
+exports.default = FreezableGroup;
+
+},{}],7:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -434,7 +605,7 @@ function (_THREE$Mesh) {
 
 exports.default = FreezableMesh;
 
-},{}],6:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -472,22 +643,25 @@ function (_EmittableMesh) {
   _createClass(InteractiveMesh, null, [{
     key: "hittest",
     value: function hittest(raycaster, down, controller) {
-      var _this2 = this;
-
       var items = InteractiveMesh.items.filter(function (x) {
         return !x.freezed;
       });
       var grabbedItem;
 
       if (down && controller) {
-        var controllerBox = controller.updateBoundingBox();
+        var controllerPosition = controller.parent.position;
+        var controllerBox = controller.updateBoundingBox(); // const controllerBoxCenter = controllerBox.getCenter(this.center);
+        // console.log(controllerBoxCenter.x, controllerBoxCenter.y, controllerBoxCenter.z);
+
         items.reduce(function (p, x, i) {
-          var intersect = controllerBox.intersectsBox(x.updateBoundingBox());
+          var distance = x.position.distanceTo(controllerPosition); // const intersect = controllerBox.intersectsBox(x.updateBoundingBox());
 
-          if (intersect) {
-            var center = x.box.getCenter(_this2.center);
-            var distance = controllerBox.distanceToPoint(center);
-
+          if (distance <= 0.1) {
+            // intersect) {
+            // const center = x.box.getCenter(this.center);
+            // const distance = controllerBox.distanceToPoint(center);
+            // console.log(distance);
+            // console.log(center, intersect, distance, p);
             if (distance < p) {
               grabbedItem = x;
               return distance;
@@ -621,7 +795,7 @@ exports.default = InteractiveMesh;
 InteractiveMesh.items = [];
 InteractiveMesh.center = new THREE.Vector3();
 
-},{"./emittable.mesh":4}],7:[function(require,module,exports){
+},{"./emittable.mesh":5}],9:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -633,7 +807,7 @@ var ControllerFragGlsl =
 "\n#define MATCAP\nuniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float emissiveIntensity;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tvec4 emissiveColor = vec4( emissive, opacity );\n\t#include <logdepthbuf_fragment>\n\t/* #include <map_fragment> */\n\t#ifdef USE_MAP\n\t\tvec4 texelColor = texture2D( map, vUv );\n\t\ttexelColor = mapTexelToLinear( texelColor );\n\t\tdiffuseColor *= texelColor;\n\t\tdiffuseColor = mix(diffuseColor, emissiveColor, emissiveIntensity);\n\t#endif\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * (matcapColor.rgb + emissiveIntensity * 0.5); // max(matcapColor.rgb, emissiveColor.rgb);\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <premultiplied_alpha_fragment>\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n}\n";
 exports.ControllerFragGlsl = ControllerFragGlsl;
 
-},{}],8:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -643,7 +817,11 @@ exports.default = void 0;
 
 var _const = require("../../const");
 
+var _emittable = _interopRequireDefault(require("../../interactive/emittable.group"));
+
 var _gamepads = require("../gamepads");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
@@ -665,10 +843,24 @@ function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || func
 
 var Controller =
 /*#__PURE__*/
-function (_THREE$Group) {
-  _inherits(Controller, _THREE$Group);
+function (_EmittableGroup) {
+  _inherits(Controller, _EmittableGroup);
 
   _createClass(Controller, [{
+    key: "ready",
+    get: function get() {
+      return this.ready_;
+    },
+    set: function set(ready) {
+      if (this.ready_ !== ready) {
+        this.ready_ = ready;
+
+        if (ready) {
+          this.emit('ready', this);
+        }
+      }
+    }
+  }, {
     key: "active",
     get: function get() {
       return this.active_;
@@ -693,8 +885,8 @@ function (_THREE$Group) {
 
     _classCallCheck(this, Controller);
 
-    _this = _possibleConstructorReturn(this, _getPrototypeOf(Controller).call(this));
-    _this.ready = false;
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(Controller).call(this)); // this.ready = false;
+
     _this.buttons = new Array(10).fill(0).map(function (x) {
       return {
         value: 0
@@ -861,13 +1053,13 @@ function (_THREE$Group) {
   }]);
 
   return Controller;
-}(THREE.Group); // Controller.clock = new THREE.Clock();
+}(_emittable.default); // Controller.clock = new THREE.Clock();
 // const clock = this.clock || (this.clock = new THREE.Clock());
 
 
 exports.default = Controller;
 
-},{"../../const":1,"../gamepads":12}],9:[function(require,module,exports){
+},{"../../const":1,"../../interactive/emittable.group":3,"../gamepads":14}],11:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -920,35 +1112,39 @@ function (_Controller) {
       var _this = this;
 
       var format = '.fbx';
-      var path = "".concat(HandController.FOLDER, "/").concat(hand, "/").concat(hand, "-animated__");
+      var path = "".concat(HandController.FOLDER, "/").concat(hand, "/").concat(hand, "-animated");
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg'); // const texture = new THREE.TextureLoader().load(`${path}.jpg`);
 
       var material = new THREE.MeshMatcapMaterial({
         color: 0xffffff,
         // map: texture,
         matcap: matcap,
-        skinning: true
+        skinning: true,
+        side: THREE.DoubleSide
       });
       var mesh = new THREE.Group();
       var loader = format === '.fbx' ? new THREE.FBXLoader() : new THREE.OBJLoader();
       var i = 0;
       loader.load("".concat(path).concat(format), function (object) {
         var mixer = _this.mixer = new THREE.AnimationMixer(object);
-        mixer.timeScale = 2;
+        mixer.timeScale = 1;
         var clip = _this.clip = mixer.clipAction(object.animations[0]);
         clip.setLoop(THREE.LoopOnce);
         clip.clampWhenFinished = true;
         object.traverse(function (child) {
           if (child instanceof THREE.Mesh) {
             child.material = material.clone(); // child.geometry.scale(0.1, 0.1, 0.1);
+            // child.geometry.computeBoundingBox();
           }
         }); // object.scale.set(0.1, 0.1, 0.1);
 
-        object.scale.set(hand === _gamepads.GAMEPAD_HANDS.LEFT ? -1 : 1, 1, 1);
-        mesh.add(object); // child.geometry.computeBoundingBox();
+        var s = hand === _gamepads.GAMEPAD_HANDS.LEFT ? 1.0 : 0.045;
+        object.scale.set(hand === _gamepads.GAMEPAD_HANDS.LEFT ? -s : s, s, s);
+        mesh.add(object);
 
         _this.boundingBox.setFromObject(object);
 
+        _this.skeleton = new THREE.SkeletonHelper(object);
         _this.ready = true;
       }, function (xhr) {
         _this.progress = xhr.loaded / xhr.total;
@@ -1031,7 +1227,7 @@ function (_Controller) {
 exports.default = HandController;
 HandController.FOLDER = "models/hand";
 
-},{"../../const":1,"../gamepads":12,"./controller":8}],10:[function(require,module,exports){
+},{"../../const":1,"../gamepads":14,"./controller":10}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1245,7 +1441,7 @@ function (_Controller) {
 exports.default = OculusQuestController;
 OculusQuestController.FOLDER = "models/oculus-quest";
 
-},{"../../const":1,"../gamepads":12,"./controller":8,"./controller-frag.glsl":7}],11:[function(require,module,exports){
+},{"../../const":1,"../gamepads":14,"./controller":10,"./controller-frag.glsl":9}],13:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1498,21 +1694,27 @@ function (_Emittable) {
   }, {
     key: "addTestController_",
     value: function addTestController_() {
+      var _this4 = this;
+
       if (this.options.test) {
         var gamepad = new _gamepads.Gamepad({
-          id: 'Test Right',
+          id: 'Test Left',
           index: 0
         });
         var pivot = new THREE.Group(); // const controller = new CONTROLLERS.DEFAULT(pivot, gamepad, this.options);
-        // const controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
 
-        var controller = new CONTROLLERS.HAND(pivot, gamepad, this.options); // pivot.scale.set(4, 4, 4);
+        var controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options); // const controller = new CONTROLLERS.HAND(pivot, gamepad, this.options);
 
-        pivot.position.set(0, (0, _const.cm)(136), -(0, _const.cm)(40));
+        controller.on('ready', function () {
+          _this4.box = new THREE.BoxHelper(controller.skeleton || controller.model, 0xff0000);
+
+          _this4.scene.add(_this4.box);
+        });
+        pivot.position.set(0, (0, _const.cm)(136), -(0, _const.cm)(50));
         this.scene.add(pivot);
-        controller.active = true;
-        this.controller = controller;
         this.controllers_[0] = controller;
+        this.controller = controller;
+        controller.active = true;
         this.mouse = {
           x: 0,
           y: 0
@@ -1565,6 +1767,8 @@ function (_Emittable) {
         controller.parent.rotation.y = -mouse.x * Math.PI;
         controller.parent.rotation.x = mouse.y * Math.PI / 2;
       }
+
+      this.box.update();
     }
   }, {
     key: "log",
@@ -1577,11 +1781,11 @@ function (_Emittable) {
   }, {
     key: "addText_",
     value: function addText_(parent) {
-      var _this4 = this;
+      var _this5 = this;
 
       var loader = new THREE.FontLoader();
       loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
-        _this4.font = font;
+        _this5.font = font;
         var material = new THREE.MeshBasicMaterial({
           color: 0x111111,
           // 0x33c5f6,
@@ -1589,7 +1793,7 @@ function (_Emittable) {
           opacity: 1,
           side: THREE.DoubleSide
         });
-        _this4.fontMaterial = material;
+        _this5.fontMaterial = material;
       });
     }
   }, {
@@ -1634,7 +1838,7 @@ function (_Emittable) {
 
 exports.default = Controllers;
 
-},{"../const":1,"../interactive/emittable":3,"./controller/controller":8,"./controller/hand-controller":9,"./controller/oculus-quest-controller":10,"./gamepads":12}],12:[function(require,module,exports){
+},{"../const":1,"../interactive/emittable":4,"./controller/controller":10,"./controller/hand-controller":11,"./controller/oculus-quest-controller":12,"./gamepads":14}],14:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2037,7 +2241,7 @@ function (_THREE$Vector) {
 
 exports.GamepadAxis = GamepadAxis;
 
-},{"../interactive/emittable":3}],13:[function(require,module,exports){
+},{"../interactive/emittable":4}],15:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2426,7 +2630,7 @@ VRDisplays[0]: VRDisplay {
 
 exports.VR = VR;
 
-},{"../interactive/emittable":3}],14:[function(require,module,exports){
+},{"../interactive/emittable":4}],16:[function(require,module,exports){
 "use strict";
 
 var _const = require("./const");
@@ -2579,6 +2783,8 @@ function () {
     key: "addControllers",
     value: function addControllers(renderer, vr, scene) {
       if (vr.mode !== _vr.VR_MODE.NONE || _const.TEST_ENABLED) {
+        var cube0 = this.cube0;
+        var cube1 = this.cube1;
         var controllers = new _controllers.default(renderer, scene, {
           debug: true
         });
@@ -2723,12 +2929,15 @@ function () {
         scale: new THREE.Vector3(1, 1, 1),
         rotation: new THREE.Vector3()
       };
+      var box = new THREE.BoxHelper(mesh, 0x0000ff);
+      this.scene.add(box);
 
       mesh.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
         mesh.scale.set(mesh.userData.scale.x, mesh.userData.scale.y, mesh.userData.scale.z);
         mesh.rotation.set(mesh.userData.rotation.x, mesh.userData.rotation.y, mesh.userData.rotation.z);
         mesh.userData.rotation.y += 0.01 + 0.01 * index;
         mesh.userData.rotation.x += 0.01 + 0.01 * index;
+        box.update();
       };
 
       mesh.on('over', function () {
@@ -2749,7 +2958,7 @@ function () {
     key: "addToothBrush",
     value: function addToothBrush() {
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-03.jpg');
-      var geometry = new _roundBox.default((0, _const.cm)(16), (0, _const.mm)(5), (0, _const.mm)(8), (0, _const.cm)(3), 1, 1, 1, 3);
+      var geometry = new _roundBox.default((0, _const.cm)(18), (0, _const.mm)(6), (0, _const.cm)(1), (0, _const.mm)(3), 1, 1, 1, 3);
       var material = new THREE.MeshMatcapMaterial({
         color: 0xffffff,
         matcap: matcap
@@ -2778,6 +2987,13 @@ function () {
       	mesh.userData.rotation.x += (0.01 + 0.01 * index);
       };
       */
+
+      var box = new THREE.BoxHelper(mesh, 0x0000ff);
+      this.scene.add(box);
+
+      mesh.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
+        box.update();
+      };
 
       return mesh;
     }
@@ -2898,5 +3114,5 @@ function () {
 var instance = new Vrui();
 instance.animate();
 
-},{"./const":1,"./geometries/round-box.geometry":2,"./interactive/interactive.mesh":6,"./vr/controllers":11,"./vr/gamepads":12,"./vr/vr":13}]},{},[14]);
+},{"./const":1,"./geometries/round-box.geometry":2,"./interactive/interactive.mesh":8,"./vr/controllers":13,"./vr/gamepads":14,"./vr/vr":15}]},{},[16]);
 //# sourceMappingURL=vrui.js.map

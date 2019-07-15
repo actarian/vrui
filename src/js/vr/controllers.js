@@ -178,17 +178,20 @@ export default class Controllers extends Emittable {
 
 	addTestController_() {
 		if (this.options.test) {
-			const gamepad = new Gamepad({ id: 'Test Right', index: 0 });
+			const gamepad = new Gamepad({ id: 'Test Left', index: 0 });
 			const pivot = new THREE.Group();
 			// const controller = new CONTROLLERS.DEFAULT(pivot, gamepad, this.options);
-			// const controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
-			const controller = new CONTROLLERS.HAND(pivot, gamepad, this.options);
-			// pivot.scale.set(4, 4, 4);
-			pivot.position.set(0, cm(136), -cm(40));
+			const controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
+			// const controller = new CONTROLLERS.HAND(pivot, gamepad, this.options);
+			controller.on('ready', () => {
+				this.box = new THREE.BoxHelper(controller.skeleton || controller.model, 0xff0000);
+				this.scene.add(this.box);
+			});
+			pivot.position.set(0, cm(136), -cm(50));
 			this.scene.add(pivot);
-			controller.active = true;
-			this.controller = controller;
 			this.controllers_[0] = controller;
+			this.controller = controller;
+			controller.active = true;
 			this.mouse = { x: 0, y: 0 };
 			this.onMouseUp = this.onMouseUp.bind(this);
 			this.onMouseDown = this.onMouseDown.bind(this);
@@ -231,6 +234,7 @@ export default class Controllers extends Emittable {
 			controller.parent.rotation.y = -mouse.x * Math.PI;
 			controller.parent.rotation.x = mouse.y * Math.PI / 2;
 		}
+		this.box.update();
 	}
 
 	log(message, object) {
