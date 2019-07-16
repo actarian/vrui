@@ -31,6 +31,8 @@ export default class InteractiveMesh extends EmittableMesh {
 			}, Number.POSITIVE_INFINITY);
 			// const origin = raycaster.origin;
 			// console.log(controllerBox, down);
+		} else {
+			InteractiveMesh.items.filter(x => x.grab).forEach(x => x.grab = undefined);
 		}
 		if (grabbedItem) {
 			// console.log(grabbedItem);
@@ -55,7 +57,6 @@ export default class InteractiveMesh extends EmittableMesh {
 			items.forEach(x => {
 				const intersection = hash[x.id]; // intersections.find(i => i.object === x);
 				x.intersection = intersection;
-				x.grab = undefined;
 				x.over = intersection !== undefined;
 				x.down = down;
 			});

@@ -39,6 +39,7 @@ class Vrui {
 		const raycaster = this.raycaster = new THREE.Raycaster();
 
 		const scene = this.scene = new THREE.Scene();
+		scene.name = 'Scene';
 		// const texture = this.addSceneBackground(renderer, scene, (texture, textureData) => {});
 		this.addSceneBackground(renderer, scene);
 
@@ -50,8 +51,10 @@ class Vrui {
 		scene.add(light);
 		*/
 
+		/*
 		const bg = this.bg = this.addBG();
 		scene.add(bg);
+		*/
 
 		const cube0 = this.cube0 = this.addRoundedCube(0);
 		scene.add(cube0);
@@ -248,8 +251,8 @@ class Vrui {
 
 	addRoundedCube(index) {
 		// const matcap = new THREE.TextureLoader().load('img/matcap/matcap-11.png');
-		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-03.jpg');
-		const geometry = new RoundBoxGeometry(cm(20), cm(20), cm(20), cm(4), 1, 1, 1, 3)
+		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
+		const geometry = new RoundBoxGeometry(cm(20), cm(20), cm(20), cm(4), 1, 1, 1, 3);
 		const material = new THREE.MeshMatcapMaterial({
 			color: 0xffffff,
 			matcap: matcap,
@@ -284,14 +287,14 @@ class Vrui {
 			mesh.material.color.setHex(0x0000ff);
 		});
 		mesh.on('up', () => {
-			mesh.material.color.setHex(0xcccccc);
+			mesh.material.color.setHex(0xffffff);
 		});
 		return mesh;
 	}
 
 	addToothBrush() {
-		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-03.jpg');
-		const geometry = new RoundBoxGeometry(cm(18), mm(6), cm(1), mm(3), 1, 1, 1, 3)
+		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
+		const geometry = new RoundBoxGeometry(cm(18), mm(6), cm(1), mm(3), 1, 1, 1, 3);
 		const material = new THREE.MeshMatcapMaterial({
 			color: 0xffffff,
 			matcap: matcap,
@@ -305,7 +308,30 @@ class Vrui {
 		mesh.position.set(0, cm(136), -cm(40));
 		mesh.name = 'toothbrush';
 		mesh.on('grab', (controller) => {
-			console.log('grab', mesh, controller);
+			mesh.freeze();
+			const target = controller.parent;
+			// target.updateMatrixWorld();
+			const position = mesh.position.clone(); // new THREE.Vector3();
+			mesh.parent.localToWorld(position);
+			target.worldToLocal(position);
+			mesh.parent.remove(mesh);
+			mesh.position.set(0, 0, 0);
+			target.add(mesh);
+			console.log('grab', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
+			console.log(target.name);
+		});
+		mesh.on('release', (controller) => {
+			const target = this.scene;
+			// target.updateMatrixWorld();
+			const position = mesh.position.clone(); // new THREE.Vector3();
+			mesh.parent.localToWorld(position);
+			target.worldToLocal(position);
+			mesh.parent.remove(mesh);
+			mesh.position.set(position);
+			target.add(mesh);
+			mesh.unfreeze();
+			console.log('release', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
+			console.log(target.name);
 		});
 		/*
 		mesh.userData = {
@@ -321,9 +347,13 @@ class Vrui {
 		*/
 		const box = new THREE.BoxHelper(mesh, 0x0000ff);
 		this.scene.add(box);
+		/*
 		mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
-			box.update();
+			if (!mesh.freezed) {
+				box.update();
+			}
 		};
+		*/
 		return mesh;
 	}
 
@@ -359,7 +389,8 @@ class Vrui {
 	}
 
 	addSceneBackground(renderer, scene, callback) {
-		const loader = new THREE.TextureLoader().load('img/environment/360_world.jpg', (source, textureData) => {
+		const loader = new THREE.TextureLoader().load('img/environment/equirectangular.jpg', (source, textureData) => {
+			// const loader = new THREE.TextureLoader().load('img/environment/360_world.jpg', (source, textureData) => {
 			source.mapping = THREE.UVMapping;
 			const options = {
 				resolution: 1024,

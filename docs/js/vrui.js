@@ -11,7 +11,7 @@ exports.addCube = addCube;
 exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TEST_ENABLED = void 0;
 
 /* jshint esversion: 6 */
-var TEST_ENABLED = false;
+var TEST_ENABLED = true;
 exports.TEST_ENABLED = TEST_ENABLED;
 var ROOM_RADIUS = 200;
 exports.ROOM_RADIUS = ROOM_RADIUS;
@@ -673,6 +673,12 @@ function (_EmittableMesh) {
           return p;
         }, Number.POSITIVE_INFINITY); // const origin = raycaster.origin;
         // console.log(controllerBox, down);
+      } else {
+        InteractiveMesh.items.filter(function (x) {
+          return x.grab;
+        }).forEach(function (x) {
+          return x.grab = undefined;
+        });
       }
 
       if (grabbedItem) {
@@ -700,7 +706,6 @@ function (_EmittableMesh) {
           var intersection = hash[x.id]; // intersections.find(i => i.object === x);
 
           x.intersection = intersection;
-          x.grab = undefined;
           x.over = intersection !== undefined;
           x.down = down;
         });
@@ -1128,9 +1133,12 @@ function (_Controller) {
       loader.load("".concat(path).concat(format), function (object) {
         var mixer = _this.mixer = new THREE.AnimationMixer(object);
         mixer.timeScale = 1;
-        var clip = _this.clip = mixer.clipAction(object.animations[0]);
-        clip.setLoop(THREE.LoopOnce);
-        clip.clampWhenFinished = true;
+        var grabClip = _this.grabClip = mixer.clipAction(object.animations[0]);
+        grabClip.setLoop(THREE.LoopOnce);
+        grabClip.clampWhenFinished = true;
+        var releaseClip = _this.releaseClip = mixer.clipAction(object.animations[1]);
+        releaseClip.setLoop(THREE.LoopOnce);
+        releaseClip.clampWhenFinished = true;
         object.traverse(function (child) {
           if (child instanceof THREE.Mesh) {
             child.material = material.clone(); // child.geometry.scale(0.1, 0.1, 0.1);
@@ -1176,22 +1184,30 @@ function (_Controller) {
   }, {
     key: "press",
     value: function press(index) {
-      if (this.clip) {
-        if (this.clip.paused) {
-          this.clip.reset();
+      if (this.releaseClip) {
+        this.releaseClip.stop();
+      }
+
+      if (this.grabClip) {
+        if (this.grabClip.paused) {
+          this.grabClip.reset();
         } else {
-          this.clip.play();
+          this.grabClip.play();
         }
       }
     }
   }, {
     key: "release",
     value: function release(index) {
-      if (this.clip) {
-        if (this.clip.paused) {
-          this.clip.reset();
+      if (this.grabClip) {
+        this.grabClip.stop();
+      }
+
+      if (this.releaseClip) {
+        if (this.releaseClip.paused) {
+          this.releaseClip.reset();
         } else {
-          this.clip.play();
+          this.releaseClip.play();
         }
       }
     }
@@ -1698,13 +1714,14 @@ function (_Emittable) {
 
       if (this.options.test) {
         var gamepad = new _gamepads.Gamepad({
-          id: 'Test Left',
+          id: 'Test Right',
           index: 0
         });
-        var pivot = new THREE.Group(); // const controller = new CONTROLLERS.DEFAULT(pivot, gamepad, this.options);
+        var pivot = new THREE.Group();
+        pivot.name = 'Controller Pivot'; // const controller = new CONTROLLERS.DEFAULT(pivot, gamepad, this.options);
+        // const controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
 
-        var controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options); // const controller = new CONTROLLERS.HAND(pivot, gamepad, this.options);
-
+        var controller = new CONTROLLERS.HAND(pivot, gamepad, this.options);
         controller.on('ready', function () {
           _this4.box = new THREE.BoxHelper(controller.skeleton || controller.model, 0xff0000);
 
@@ -1768,7 +1785,11 @@ function (_Emittable) {
         controller.parent.rotation.x = mouse.y * Math.PI / 2;
       }
 
-      this.box.update();
+      var box = this.box;
+
+      if (box) {
+        box.update();
+      }
     }
   }, {
     key: "log",
@@ -2688,7 +2709,8 @@ function () {
     });
     container.appendChild(vr.element);
     var raycaster = this.raycaster = new THREE.Raycaster();
-    var scene = this.scene = new THREE.Scene(); // const texture = this.addSceneBackground(renderer, scene, (texture, textureData) => {});
+    var scene = this.scene = new THREE.Scene();
+    scene.name = 'Scene'; // const texture = this.addSceneBackground(renderer, scene, (texture, textureData) => {});
 
     this.addSceneBackground(renderer, scene);
     var camera = this.camera = this.addCamera();
@@ -2698,8 +2720,11 @@ function () {
     scene.add(light);
     */
 
-    var bg = this.bg = this.addBG();
+    /*
+    const bg = this.bg = this.addBG();
     scene.add(bg);
+    */
+
     var cube0 = this.cube0 = this.addRoundedCube(0);
     scene.add(cube0);
     var cube1 = this.cube1 = this.addRoundedCube(1);
@@ -2911,7 +2936,7 @@ function () {
     key: "addRoundedCube",
     value: function addRoundedCube(index) {
       // const matcap = new THREE.TextureLoader().load('img/matcap/matcap-11.png');
-      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-03.jpg');
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
       var geometry = new _roundBox.default((0, _const.cm)(20), (0, _const.cm)(20), (0, _const.cm)(20), (0, _const.cm)(4), 1, 1, 1, 3);
       var material = new THREE.MeshMatcapMaterial({
         color: 0xffffff,
@@ -2950,14 +2975,16 @@ function () {
         mesh.material.color.setHex(0x0000ff);
       });
       mesh.on('up', function () {
-        mesh.material.color.setHex(0xcccccc);
+        mesh.material.color.setHex(0xffffff);
       });
       return mesh;
     }
   }, {
     key: "addToothBrush",
     value: function addToothBrush() {
-      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-03.jpg');
+      var _this3 = this;
+
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
       var geometry = new _roundBox.default((0, _const.cm)(18), (0, _const.mm)(6), (0, _const.cm)(1), (0, _const.mm)(3), 1, 1, 1, 3);
       var material = new THREE.MeshMatcapMaterial({
         color: 0xffffff,
@@ -2973,7 +3000,32 @@ function () {
       mesh.position.set(0, (0, _const.cm)(136), -(0, _const.cm)(40));
       mesh.name = 'toothbrush';
       mesh.on('grab', function (controller) {
-        console.log('grab', mesh, controller);
+        mesh.freeze();
+        var target = controller.parent; // target.updateMatrixWorld();
+
+        var position = mesh.position.clone(); // new THREE.Vector3();
+
+        mesh.parent.localToWorld(position);
+        target.worldToLocal(position);
+        mesh.parent.remove(mesh);
+        mesh.position.set(0, 0, 0);
+        target.add(mesh);
+        console.log('grab', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
+        console.log(target.name);
+      });
+      mesh.on('release', function (controller) {
+        var target = _this3.scene; // target.updateMatrixWorld();
+
+        var position = mesh.position.clone(); // new THREE.Vector3();
+
+        mesh.parent.localToWorld(position);
+        target.worldToLocal(position);
+        mesh.parent.remove(mesh);
+        mesh.position.set(position);
+        target.add(mesh);
+        mesh.unfreeze();
+        console.log('release', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
+        console.log(target.name);
       });
       /*
       mesh.userData = {
@@ -2990,10 +3042,13 @@ function () {
 
       var box = new THREE.BoxHelper(mesh, 0x0000ff);
       this.scene.add(box);
-
-      mesh.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
-        box.update();
+      /*
+      mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+      	if (!mesh.freezed) {
+      		box.update();
+      	}
       };
+      */
 
       return mesh;
     }
@@ -3032,7 +3087,8 @@ function () {
   }, {
     key: "addSceneBackground",
     value: function addSceneBackground(renderer, scene, callback) {
-      var loader = new THREE.TextureLoader().load('img/environment/360_world.jpg', function (source, textureData) {
+      var loader = new THREE.TextureLoader().load('img/environment/equirectangular.jpg', function (source, textureData) {
+        // const loader = new THREE.TextureLoader().load('img/environment/360_world.jpg', (source, textureData) => {
         source.mapping = THREE.UVMapping;
         var options = {
           resolution: 1024,
@@ -3099,11 +3155,11 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this3 = this;
+      var _this4 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this3.render();
+        _this4.render();
       });
     }
   }]);

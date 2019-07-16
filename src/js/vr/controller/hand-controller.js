@@ -28,9 +28,12 @@ export default class HandController extends Controller {
 		loader.load(`${path}${format}`, (object) => {
 			const mixer = this.mixer = new THREE.AnimationMixer(object);
 			mixer.timeScale = 1;
-			const clip = this.clip = mixer.clipAction(object.animations[0]);
-			clip.setLoop(THREE.LoopOnce);
-			clip.clampWhenFinished = true;
+			const grabClip = this.grabClip = mixer.clipAction(object.animations[0]);
+			grabClip.setLoop(THREE.LoopOnce);
+			grabClip.clampWhenFinished = true;
+			const releaseClip = this.releaseClip = mixer.clipAction(object.animations[1]);
+			releaseClip.setLoop(THREE.LoopOnce);
+			releaseClip.clampWhenFinished = true;
 			object.traverse((child) => {
 				if (child instanceof THREE.Mesh) {
 					child.material = material.clone();
@@ -73,21 +76,27 @@ export default class HandController extends Controller {
 	}
 
 	press(index) {
-		if (this.clip) {
-			if (this.clip.paused) {
-				this.clip.reset();
+		if (this.releaseClip) {
+			this.releaseClip.stop();
+		}
+		if (this.grabClip) {
+			if (this.grabClip.paused) {
+				this.grabClip.reset();
 			} else {
-				this.clip.play();
+				this.grabClip.play();
 			}
 		}
 	}
 
 	release(index) {
-		if (this.clip) {
-			if (this.clip.paused) {
-				this.clip.reset();
+		if (this.grabClip) {
+			this.grabClip.stop();
+		}
+		if (this.releaseClip) {
+			if (this.releaseClip.paused) {
+				this.releaseClip.reset();
 			} else {
-				this.clip.play();
+				this.releaseClip.play();
 			}
 		}
 	}

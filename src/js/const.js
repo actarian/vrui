@@ -1,6 +1,6 @@
 /* jshint esversion: 6 */
 
-export const TEST_ENABLED = false;
+export const TEST_ENABLED = true;
 export const ROOM_RADIUS = 200;
 export const PANEL_RADIUS = 100;
 export const POINT_RADIUS = 99;
