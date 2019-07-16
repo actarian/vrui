@@ -3,7 +3,7 @@
 // import * as THREE from 'three';
 // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-import { cm, mm, TEST_ENABLED } from './const';
+import { cm, deg, mm, TEST_ENABLED } from './const';
 import RoundBoxGeometry from './geometries/round-box.geometry';
 import InteractiveMesh from './interactive/interactive.mesh';
 import Controllers from './vr/controllers';
@@ -25,7 +25,7 @@ class Vrui {
 		const renderer = this.renderer = new THREE.WebGLRenderer({
 			antialias: true,
 		});
-		renderer.setClearColor(0x666666, 1);
+		renderer.setClearColor(0xdfdcd5, 1);
 		renderer.setPixelRatio(window.devicePixelRatio);
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		renderer.vr.enabled = true;
@@ -268,14 +268,19 @@ class Vrui {
 			scale: new THREE.Vector3(1, 1, 1),
 			rotation: new THREE.Vector3(),
 		};
-		const box = new THREE.BoxHelper(mesh, 0x0000ff);
-		this.scene.add(box);
+		let box;
+		if (TEST_ENABLED) {
+			box = new THREE.BoxHelper(mesh, 0x0000ff);
+			this.scene.add(box);
+		}
 		mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
 			mesh.scale.set(mesh.userData.scale.x, mesh.userData.scale.y, mesh.userData.scale.z);
 			mesh.rotation.set(mesh.userData.rotation.x, mesh.userData.rotation.y, mesh.userData.rotation.z);
 			mesh.userData.rotation.y += (0.01 + 0.01 * index);
 			mesh.userData.rotation.x += (0.01 + 0.01 * index);
-			box.update();
+			if (box) {
+				box.update();
+			}
 		};
 		mesh.on('over', () => {
 			mesh.material.color.setHex(0xff0000);
@@ -307,6 +312,12 @@ class Vrui {
 		const mesh = new InteractiveMesh(geometry, material);
 		mesh.position.set(0, cm(136), -cm(40));
 		mesh.name = 'toothbrush';
+
+		const bristlesGeometry = new RoundBoxGeometry(cm(2), mm(12), cm(1), mm(2), 1, 1, 1, 3);
+		const bristlesMesh = new THREE.Mesh(bristlesGeometry, material);
+		bristlesMesh.position.set(-cm(8), mm(9), 0);
+		mesh.add(bristlesMesh);
+
 		mesh.on('grab', (controller) => {
 			mesh.freeze();
 			const target = controller.parent;
@@ -315,7 +326,14 @@ class Vrui {
 			mesh.parent.localToWorld(position);
 			target.worldToLocal(position);
 			mesh.parent.remove(mesh);
-			mesh.position.set(0, 0, 0);
+			// mesh.position.set(position.x, position.y, position.z);
+			if (controller.gamepad.hand === GAMEPAD_HANDS.LEFT) {
+				mesh.position.set(cm(1), cm(2), cm(0));
+				mesh.rotation.set(deg(180), deg(0), deg(115));
+			} else {
+				mesh.position.set(cm(-1), cm(3), cm(-1));
+				mesh.rotation.set(0, deg(10), deg(-60));
+			}
 			target.add(mesh);
 			console.log('grab', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
 			console.log(target.name);
@@ -327,7 +345,7 @@ class Vrui {
 			mesh.parent.localToWorld(position);
 			target.worldToLocal(position);
 			mesh.parent.remove(mesh);
-			mesh.position.set(position);
+			mesh.position.set(position.x, position.y, position.z);
 			target.add(mesh);
 			mesh.unfreeze();
 			console.log('release', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
@@ -345,15 +363,15 @@ class Vrui {
 			mesh.userData.rotation.x += (0.01 + 0.01 * index);
 		};
 		*/
-		const box = new THREE.BoxHelper(mesh, 0x0000ff);
-		this.scene.add(box);
-		/*
-		mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
-			if (!mesh.freezed) {
-				box.update();
-			}
-		};
-		*/
+		if (TEST_ENABLED) {
+			const box = new THREE.BoxHelper(mesh, 0x0000ff);
+			this.scene.add(box);
+			mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+				if (!mesh.freezed) {
+					box.update();
+				}
+			};
+		}
 		return mesh;
 	}
 

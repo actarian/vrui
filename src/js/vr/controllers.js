@@ -178,7 +178,7 @@ export default class Controllers extends Emittable {
 
 	addTestController_() {
 		if (this.options.test) {
-			const gamepad = new Gamepad({ id: 'Test Right', index: 0 });
+			const gamepad = new Gamepad({ id: 'Test Left', index: 0 });
 			const pivot = new THREE.Group();
 			pivot.name = 'Controller Pivot';
 			// const controller = new CONTROLLERS.DEFAULT(pivot, gamepad, this.options);

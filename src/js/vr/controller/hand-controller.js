@@ -27,7 +27,7 @@ export default class HandController extends Controller {
 		let i = 0;
 		loader.load(`${path}${format}`, (object) => {
 			const mixer = this.mixer = new THREE.AnimationMixer(object);
-			mixer.timeScale = 1;
+			mixer.timeScale = 2;
 			const grabClip = this.grabClip = mixer.clipAction(object.animations[0]);
 			grabClip.setLoop(THREE.LoopOnce);
 			grabClip.clampWhenFinished = true;
@@ -42,7 +42,7 @@ export default class HandController extends Controller {
 				}
 			});
 			// object.scale.set(0.1, 0.1, 0.1);
-			const s = hand === GAMEPAD_HANDS.LEFT ? 1.0 : 0.045;
+			const s = hand === GAMEPAD_HANDS.LEFT ? 0.045 : 0.045;
 			object.scale.set(hand === GAMEPAD_HANDS.LEFT ? -s : s, s, s);
 			mesh.add(object);
 			this.boundingBox.setFromObject(object);

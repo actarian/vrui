@@ -11,7 +11,7 @@ exports.addCube = addCube;
 exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TEST_ENABLED = void 0;
 
 /* jshint esversion: 6 */
-var TEST_ENABLED = true;
+var TEST_ENABLED = false;
 exports.TEST_ENABLED = TEST_ENABLED;
 var ROOM_RADIUS = 200;
 exports.ROOM_RADIUS = ROOM_RADIUS;
@@ -1132,7 +1132,7 @@ function (_Controller) {
       var i = 0;
       loader.load("".concat(path).concat(format), function (object) {
         var mixer = _this.mixer = new THREE.AnimationMixer(object);
-        mixer.timeScale = 1;
+        mixer.timeScale = 2;
         var grabClip = _this.grabClip = mixer.clipAction(object.animations[0]);
         grabClip.setLoop(THREE.LoopOnce);
         grabClip.clampWhenFinished = true;
@@ -1146,7 +1146,7 @@ function (_Controller) {
           }
         }); // object.scale.set(0.1, 0.1, 0.1);
 
-        var s = hand === _gamepads.GAMEPAD_HANDS.LEFT ? 1.0 : 0.045;
+        var s = hand === _gamepads.GAMEPAD_HANDS.LEFT ? 0.045 : 0.045;
         object.scale.set(hand === _gamepads.GAMEPAD_HANDS.LEFT ? -s : s, s, s);
         mesh.add(object);
 
@@ -1714,7 +1714,7 @@ function (_Emittable) {
 
       if (this.options.test) {
         var gamepad = new _gamepads.Gamepad({
-          id: 'Test Right',
+          id: 'Test Left',
           index: 0
         });
         var pivot = new THREE.Group();
@@ -2697,7 +2697,7 @@ function () {
     var renderer = this.renderer = new THREE.WebGLRenderer({
       antialias: true
     });
-    renderer.setClearColor(0x666666, 1);
+    renderer.setClearColor(0xdfdcd5, 1);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.vr.enabled = true;
@@ -2954,15 +2954,22 @@ function () {
         scale: new THREE.Vector3(1, 1, 1),
         rotation: new THREE.Vector3()
       };
-      var box = new THREE.BoxHelper(mesh, 0x0000ff);
-      this.scene.add(box);
+      var box;
+
+      if (_const.TEST_ENABLED) {
+        box = new THREE.BoxHelper(mesh, 0x0000ff);
+        this.scene.add(box);
+      }
 
       mesh.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
         mesh.scale.set(mesh.userData.scale.x, mesh.userData.scale.y, mesh.userData.scale.z);
         mesh.rotation.set(mesh.userData.rotation.x, mesh.userData.rotation.y, mesh.userData.rotation.z);
         mesh.userData.rotation.y += 0.01 + 0.01 * index;
         mesh.userData.rotation.x += 0.01 + 0.01 * index;
-        box.update();
+
+        if (box) {
+          box.update();
+        }
       };
 
       mesh.on('over', function () {
@@ -2999,6 +3006,10 @@ function () {
       var mesh = new _interactive.default(geometry, material);
       mesh.position.set(0, (0, _const.cm)(136), -(0, _const.cm)(40));
       mesh.name = 'toothbrush';
+      var bristlesGeometry = new _roundBox.default((0, _const.cm)(2), (0, _const.mm)(12), (0, _const.cm)(1), (0, _const.mm)(2), 1, 1, 1, 3);
+      var bristlesMesh = new THREE.Mesh(bristlesGeometry, material);
+      bristlesMesh.position.set(-(0, _const.cm)(8), (0, _const.mm)(9), 0);
+      mesh.add(bristlesMesh);
       mesh.on('grab', function (controller) {
         mesh.freeze();
         var target = controller.parent; // target.updateMatrixWorld();
@@ -3007,8 +3018,16 @@ function () {
 
         mesh.parent.localToWorld(position);
         target.worldToLocal(position);
-        mesh.parent.remove(mesh);
-        mesh.position.set(0, 0, 0);
+        mesh.parent.remove(mesh); // mesh.position.set(position.x, position.y, position.z);
+
+        if (controller.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+          mesh.position.set((0, _const.cm)(1), (0, _const.cm)(2), (0, _const.cm)(0));
+          mesh.rotation.set((0, _const.deg)(180), (0, _const.deg)(0), (0, _const.deg)(115));
+        } else {
+          mesh.position.set((0, _const.cm)(-1), (0, _const.cm)(3), (0, _const.cm)(-1));
+          mesh.rotation.set(0, (0, _const.deg)(10), (0, _const.deg)(-60));
+        }
+
         target.add(mesh);
         console.log('grab', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
         console.log(target.name);
@@ -3021,7 +3040,7 @@ function () {
         mesh.parent.localToWorld(position);
         target.worldToLocal(position);
         mesh.parent.remove(mesh);
-        mesh.position.set(position);
+        mesh.position.set(position.x, position.y, position.z);
         target.add(mesh);
         mesh.unfreeze();
         console.log('release', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
@@ -3040,15 +3059,16 @@ function () {
       };
       */
 
-      var box = new THREE.BoxHelper(mesh, 0x0000ff);
-      this.scene.add(box);
-      /*
-      mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
-      	if (!mesh.freezed) {
-      		box.update();
-      	}
-      };
-      */
+      if (_const.TEST_ENABLED) {
+        var box = new THREE.BoxHelper(mesh, 0x0000ff);
+        this.scene.add(box);
+
+        mesh.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
+          if (!mesh.freezed) {
+            box.update();
+          }
+        };
+      }
 
       return mesh;
     }
