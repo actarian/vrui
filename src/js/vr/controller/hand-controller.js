@@ -15,10 +15,13 @@ export default class HandController extends Controller {
 		const path = `${HandController.FOLDER}/${hand}/${hand}-animated`;
 		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
 		// const texture = new THREE.TextureLoader().load(`${path}.jpg`);
-		const material = new THREE.MeshMatcapMaterial({
+		const material = new THREE.MeshStandardMaterial({
 			color: 0xffffff,
 			// map: texture,
-			matcap: matcap,
+			// matcap: matcap,
+			alphaTest: 0.1,
+			transparent: true,
+			opacity: 1,
 			skinning: true,
 			side: THREE.DoubleSide,
 		});
@@ -36,7 +39,8 @@ export default class HandController extends Controller {
 			releaseClip.clampWhenFinished = true;
 			object.traverse((child) => {
 				if (child instanceof THREE.Mesh) {
-					child.material = material.clone();
+					child.material = material;
+					// child.material = material.clone();
 					// child.geometry.scale(0.1, 0.1, 0.1);
 					// child.geometry.computeBoundingBox();
 				}
@@ -45,6 +49,7 @@ export default class HandController extends Controller {
 			const s = hand === GAMEPAD_HANDS.LEFT ? 0.045 : 0.045;
 			object.scale.set(hand === GAMEPAD_HANDS.LEFT ? -s : s, s, s);
 			mesh.add(object);
+			this.material = material;
 			this.boundingBox.setFromObject(object);
 			this.skeleton = new THREE.SkeletonHelper(object);
 			this.ready = true;
@@ -76,27 +81,31 @@ export default class HandController extends Controller {
 	}
 
 	press(index) {
-		if (this.releaseClip) {
-			this.releaseClip.stop();
-		}
-		if (this.grabClip) {
-			if (this.grabClip.paused) {
-				this.grabClip.reset();
-			} else {
-				this.grabClip.play();
+		if (index === 2) {
+			if (this.releaseClip) {
+				this.releaseClip.stop();
+			}
+			if (this.grabClip) {
+				if (this.grabClip.paused) {
+					this.grabClip.reset();
+				} else {
+					this.grabClip.play();
+				}
 			}
 		}
 	}
 
 	release(index) {
-		if (this.grabClip) {
-			this.grabClip.stop();
-		}
-		if (this.releaseClip) {
-			if (this.releaseClip.paused) {
-				this.releaseClip.reset();
-			} else {
-				this.releaseClip.play();
+		if (index === 2) {
+			if (this.grabClip) {
+				this.grabClip.stop();
+			}
+			if (this.releaseClip) {
+				if (this.releaseClip.paused) {
+					this.releaseClip.reset();
+				} else {
+					this.releaseClip.play();
+				}
 			}
 		}
 	}

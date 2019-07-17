@@ -190,7 +190,7 @@ export default class Controllers extends Emittable {
 					this.scene.add(this.box);
 				}
 			});
-			pivot.position.set(0, cm(137), -cm(50));
+			pivot.position.set(0, cm(117), -cm(60));
 			this.scene.add(pivot);
 			this.controllers_[0] = controller;
 			this.controller = controller;
@@ -208,7 +208,7 @@ export default class Controllers extends Emittable {
 	onMouseDown(event) {
 		const controller = this.controller;
 		if (controller) {
-			const button = controller.button || (controller.button = new GamepadButton(1, controller.gamepad));
+			const button = controller.button || (controller.button = new GamepadButton(2, controller.gamepad));
 			controller.press(button.index);
 			this.gamepads.onEvent('press', button);
 		}

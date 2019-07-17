@@ -233,6 +233,7 @@ export class Gamepad extends Emittable {
 
 	feedback(strength = 0.1, duration = 50) {
 		// !!! care for battery
+		return;
 		const actuators = this.gamepad.hapticActuators;
 		if (actuators && actuators.length) {
 			return actuators[0].pulse(strength, duration);

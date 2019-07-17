@@ -48,10 +48,8 @@ class Vrui {
 		const camera = this.camera = this.addCamera();
 		scene.add(camera);
 
-		/*
-		const light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
+		const light = new THREE.HemisphereLight(0xffffff, 0x330000, 10);
 		scene.add(light);
-		*/
 
 		/*
 		const bg = this.bg = this.addBG();
@@ -230,7 +228,7 @@ class Vrui {
 			matcap: matcap,
 		});
 		const mesh = new InteractiveMesh(geometry, material);
-		mesh.position.set(index === 0 ? -cm(30) : cm(30), cm(137), -2);
+		mesh.position.set(index === 0 ? -cm(30) : cm(30), cm(117), -2);
 		mesh.userData = {
 			scale: new THREE.Vector3(1, 1, 1),
 			rotation: new THREE.Vector3(),
@@ -275,7 +273,7 @@ class Vrui {
 			*/
 		});
 		const mesh = new InteractiveMesh(geometry, material);
-		mesh.position.set(index === 0 ? -cm(30) : cm(30), cm(137), -2);
+		mesh.position.set(index === 0 ? -cm(30) : cm(30), cm(117), -2);
 		mesh.userData = {
 			scale: new THREE.Vector3(1, 1, 1),
 			rotation: new THREE.Vector3(),
@@ -316,21 +314,54 @@ class Vrui {
 		const material = new THREE.MeshBasicMaterial({
 			color: 0xffffff,
 			map: texture,
-			emissive: 0xcccccc,
 			transparent: true,
 			// side: THREE.DoubleSide,
 		});
 		const mesh = new InteractiveMesh(geometry, material);
 		mesh.position.set(0, cm(200), -6);
+		mesh.on('over', () => {
+			// mesh.material.opacity = 0.5;
+			TweenMax.to(mesh.material, 0.4, {
+				opacity: 0.8,
+				ease: Power2.easeInOut
+			});
+		});
+		mesh.on('out', () => {
+			// mesh.material.opacity = 1;
+			TweenMax.to(mesh.material, 0.4, {
+				opacity: 1.0,
+				ease: Power2.easeInOut
+			});
+		});
 		return mesh;
 	}
 
 	addStand() {
+		const material = new THREE.MeshStandardMaterial({
+			color: 0xffffff,
+			metalness: 0.9,
+			roughness: 0.05,
+		});
+		const geometry = new RoundBoxGeometry(cm(40), mm(10), cm(20), mm(5), 1, 1, 1, 5);
+		const group = new THREE.Mesh(geometry, material);
+		group.position.set(0, cm(116), cm(-60));
+		return group;
+	}
+
+	addStand__() {
 		// const matcap = new THREE.TextureLoader().load('img/matcap/matcap-12.jpg');
-		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
+		// const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
+		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-01.jpg');
+		/*
 		const material = new THREE.MeshMatcapMaterial({
 			color: 0xffffff,
 			matcap: matcap,
+		});
+		*/
+		const material = new THREE.MeshStandardMaterial({
+			color: 0xffffff,
+			metalness: 0.9,
+			roughness: 0.05,
 			/*
 			transparent: true,
 			opacity: 0.4,
@@ -338,7 +369,7 @@ class Vrui {
 			*/
 		});
 		const group = new THREE.Group();
-		group.position.set(0, 0, cm(-20));
+		group.position.set(0, cm(-20), cm(-40));
 		const path = `models/stand/stand.fbx`;
 		const loader = new THREE.FBXLoader();
 		loader.load(path, (object) => {
@@ -361,19 +392,19 @@ class Vrui {
 	}
 
 	addToothBrush() {
-		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
+		// const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
+		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-11.png');
 		const geometry = new RoundBoxGeometry(cm(18), mm(6), cm(1), mm(3), 1, 1, 1, 3);
 		const material = new THREE.MeshMatcapMaterial({
 			color: 0xffffff,
 			matcap: matcap,
-			/*
 			transparent: true,
 			opacity: 0.4,
 			side: THREE.DoubleSide,
-			*/
+
 		});
 		const mesh = new InteractiveMesh(geometry, material);
-		mesh.position.set(0, cm(137), -cm(40));
+		mesh.position.set(0, cm(117), cm(-60));
 		mesh.name = 'toothbrush';
 
 		const bristlesGeometry = new RoundBoxGeometry(cm(2), mm(12), cm(1), mm(2), 1, 1, 1, 3);
@@ -382,6 +413,7 @@ class Vrui {
 		mesh.add(bristlesMesh);
 
 		mesh.on('grab', (controller) => {
+			mesh.userData.speed = 0;
 			mesh.falling = false;
 			mesh.freeze();
 			const target = controller.parent;
@@ -399,22 +431,34 @@ class Vrui {
 				mesh.rotation.set(0, deg(10), deg(-60));
 			}
 			target.add(mesh);
-			console.log('grab', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
-			console.log(target.name);
+			TweenMax.to(controller.material, 0.4, {
+				opacity: 0.0,
+				ease: Power2.easeInOut,
+			});
+			// console.log('grab', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
+			// console.log(target.name);
 		});
 		mesh.on('release', (controller) => {
 			const target = this.scene;
 			// target.updateMatrixWorld();
+			// mesh.parent.updateMatrixWorld();
 			const position = mesh.position.clone(); // new THREE.Vector3();
+			const quaternion = mesh.parent.quaternion.clone();
 			mesh.parent.localToWorld(position);
 			target.worldToLocal(position);
 			mesh.parent.remove(mesh);
+			mesh.position.set(0, 0, 0);
+			mesh.quaternion.premultiply(quaternion);
 			mesh.position.set(position.x, position.y, position.z);
 			target.add(mesh);
 			mesh.unfreeze();
 			mesh.falling = true;
-			console.log('release', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
-			console.log(target.name);
+			TweenMax.to(controller.material, 0.4, {
+				opacity: 1.0,
+				ease: Power2.easeInOut
+			});
+			// console.log('release', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
+			// console.log(target.name);
 		});
 		/*
 		mesh.userData = {
@@ -432,7 +476,7 @@ class Vrui {
 			mesh.parent.remove(mesh);
 			mesh.falling = false;
 			setTimeout(() => {
-				mesh.position.set(0, cm(137), -cm(40));
+				mesh.position.set(0, cm(117), cm(-60));
 				mesh.rotation.set(0, 0, 0);
 				this.scene.add(mesh);
 				// console.log('onReset.scened');
@@ -449,12 +493,12 @@ class Vrui {
 				let ry = mesh.rotation.y;
 				let rz = mesh.rotation.z;
 				ty -= speed;
-				rx += (0 - rx) / 30;
-				ry += (0 - ry) / 30;
+				rx += (0 - rx) / 1000 * speed;
+				ry += (0 - ry) / 1000 * speed;
 				rz += deg(0.05) * speed;
 				mesh.position.set(tx, ty, tz);
 				mesh.rotation.set(rx, ry, rz);
-				mesh.userData.speed = speed * 1.2;
+				mesh.userData.speed = speed * 1.1;
 				if (ty < cm(-30)) {
 					onReset();
 				}
@@ -472,6 +516,22 @@ class Vrui {
 			onFallDown();
 		};
 		return mesh;
+	}
+
+	checkCameraPosition() {
+		const tick = this.tick;
+		const camera = this.camera;
+		const controllers = this.controllers;
+		const stand = this.stand;
+		const toothbrush = this.toothbrush;
+		const y = camera.position.y;
+		if (y < 1.2 && stand.position.y === cm(116)) {
+			stand.position.y = y - cm(40);
+			toothbrush.position.y = y - cm(39);
+		}
+		if (tick % 120 === 0 && controllers) {
+			controllers.setText(`camera ${y.toFixed(3)}`);
+		}
 	}
 
 	addBG() {
@@ -561,6 +621,7 @@ class Vrui {
 			if (this.controllers) {
 				this.controllers.update();
 				this.updateRaycaster();
+				this.checkCameraPosition();
 			}
 			camera.onBeforeRender(renderer, scene);
 			renderer.render(scene, camera);

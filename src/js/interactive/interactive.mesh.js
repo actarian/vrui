@@ -7,7 +7,7 @@ export default class InteractiveMesh extends EmittableMesh {
 	static hittest(raycaster, down, controller) {
 		const items = InteractiveMesh.items.filter(x => !x.freezed);
 		let grabbedItem;
-		if (down && controller) {
+		if (controller && down && down.index === 2) {
 			const controllerPosition = controller.parent.position;
 			const controllerBox = controller.updateBoundingBox();
 			// const controllerBoxCenter = controllerBox.getCenter(this.center);

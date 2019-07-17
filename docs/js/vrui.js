@@ -667,7 +667,7 @@ function (_EmittableMesh) {
       });
       var grabbedItem;
 
-      if (down && controller) {
+      if (controller && down && down.index === 2) {
         var controllerPosition = controller.parent.position;
         var controllerBox = controller.updateBoundingBox(); // const controllerBoxCenter = controllerBox.getCenter(this.center);
         // console.log(controllerBoxCenter.x, controllerBoxCenter.y, controllerBoxCenter.z);
@@ -1139,10 +1139,13 @@ function (_Controller) {
       var path = "".concat(HandController.FOLDER, "/").concat(hand, "/").concat(hand, "-animated");
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg'); // const texture = new THREE.TextureLoader().load(`${path}.jpg`);
 
-      var material = new THREE.MeshMatcapMaterial({
+      var material = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         // map: texture,
-        matcap: matcap,
+        // matcap: matcap,
+        alphaTest: 0.1,
+        transparent: true,
+        opacity: 1,
         skinning: true,
         side: THREE.DoubleSide
       });
@@ -1160,7 +1163,8 @@ function (_Controller) {
         releaseClip.clampWhenFinished = true;
         object.traverse(function (child) {
           if (child instanceof THREE.Mesh) {
-            child.material = material.clone(); // child.geometry.scale(0.1, 0.1, 0.1);
+            child.material = material; // child.material = material.clone();
+            // child.geometry.scale(0.1, 0.1, 0.1);
             // child.geometry.computeBoundingBox();
           }
         }); // object.scale.set(0.1, 0.1, 0.1);
@@ -1168,6 +1172,7 @@ function (_Controller) {
         var s = hand === _gamepads.GAMEPAD_HANDS.LEFT ? 0.045 : 0.045;
         object.scale.set(hand === _gamepads.GAMEPAD_HANDS.LEFT ? -s : s, s, s);
         mesh.add(object);
+        _this.material = material;
 
         _this.boundingBox.setFromObject(object);
 
@@ -1203,30 +1208,34 @@ function (_Controller) {
   }, {
     key: "press",
     value: function press(index) {
-      if (this.releaseClip) {
-        this.releaseClip.stop();
-      }
+      if (index === 2) {
+        if (this.releaseClip) {
+          this.releaseClip.stop();
+        }
 
-      if (this.grabClip) {
-        if (this.grabClip.paused) {
-          this.grabClip.reset();
-        } else {
-          this.grabClip.play();
+        if (this.grabClip) {
+          if (this.grabClip.paused) {
+            this.grabClip.reset();
+          } else {
+            this.grabClip.play();
+          }
         }
       }
     }
   }, {
     key: "release",
     value: function release(index) {
-      if (this.grabClip) {
-        this.grabClip.stop();
-      }
+      if (index === 2) {
+        if (this.grabClip) {
+          this.grabClip.stop();
+        }
 
-      if (this.releaseClip) {
-        if (this.releaseClip.paused) {
-          this.releaseClip.reset();
-        } else {
-          this.releaseClip.play();
+        if (this.releaseClip) {
+          if (this.releaseClip.paused) {
+            this.releaseClip.reset();
+          } else {
+            this.releaseClip.play();
+          }
         }
       }
     }
@@ -1748,7 +1757,7 @@ function (_Emittable) {
             _this4.scene.add(_this4.box);
           }
         });
-        pivot.position.set(0, (0, _const.cm)(137), -(0, _const.cm)(50));
+        pivot.position.set(0, (0, _const.cm)(117), -(0, _const.cm)(60));
         this.scene.add(pivot);
         this.controllers_[0] = controller;
         this.controller = controller;
@@ -1771,7 +1780,7 @@ function (_Emittable) {
       var controller = this.controller;
 
       if (controller) {
-        var button = controller.button || (controller.button = new _gamepads.GamepadButton(1, controller.gamepad));
+        var button = controller.button || (controller.button = new _gamepads.GamepadButton(2, controller.gamepad));
         controller.press(button.index);
         this.gamepads.onEvent('press', button);
       }
@@ -2231,6 +2240,7 @@ function (_Emittable2) {
       var strength = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0.1;
       var duration = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 50;
       // !!! care for battery
+      return;
       var actuators = this.gamepad.hapticActuators;
 
       if (actuators && actuators.length) {
@@ -2739,11 +2749,8 @@ function () {
     this.addSceneBackground(renderer, scene);
     var camera = this.camera = this.addCamera();
     scene.add(camera);
-    /*
-    const light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
+    var light = new THREE.HemisphereLight(0xffffff, 0x330000, 10);
     scene.add(light);
-    */
-
     /*
     const bg = this.bg = this.addBG();
     scene.add(bg);
@@ -2936,7 +2943,7 @@ function () {
         matcap: matcap
       });
       var mesh = new _interactive.default(geometry, material);
-      mesh.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(137), -2);
+      mesh.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(117), -2);
       mesh.userData = {
         scale: new THREE.Vector3(1, 1, 1),
         rotation: new THREE.Vector3() // position: new THREE.Vector3(),
@@ -2985,7 +2992,7 @@ function () {
 
       });
       var mesh = new _interactive.default(geometry, material);
-      mesh.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(137), -2);
+      mesh.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(117), -2);
       mesh.userData = {
         scale: new THREE.Vector3(1, 1, 1),
         rotation: new THREE.Vector3()
@@ -3031,22 +3038,57 @@ function () {
       var material = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         map: texture,
-        emissive: 0xcccccc,
         transparent: true // side: THREE.DoubleSide,
 
       });
       var mesh = new _interactive.default(geometry, material);
       mesh.position.set(0, (0, _const.cm)(200), -6);
+      mesh.on('over', function () {
+        // mesh.material.opacity = 0.5;
+        TweenMax.to(mesh.material, 0.4, {
+          opacity: 0.8,
+          ease: Power2.easeInOut
+        });
+      });
+      mesh.on('out', function () {
+        // mesh.material.opacity = 1;
+        TweenMax.to(mesh.material, 0.4, {
+          opacity: 1.0,
+          ease: Power2.easeInOut
+        });
+      });
       return mesh;
     }
   }, {
     key: "addStand",
     value: function addStand() {
-      // const matcap = new THREE.TextureLoader().load('img/matcap/matcap-12.jpg');
-      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
-      var material = new THREE.MeshMatcapMaterial({
+      var material = new THREE.MeshStandardMaterial({
         color: 0xffffff,
-        matcap: matcap
+        metalness: 0.9,
+        roughness: 0.05
+      });
+      var geometry = new _roundBox.default((0, _const.cm)(40), (0, _const.mm)(10), (0, _const.cm)(20), (0, _const.mm)(5), 1, 1, 1, 5);
+      var group = new THREE.Mesh(geometry, material);
+      group.position.set(0, (0, _const.cm)(116), (0, _const.cm)(-60));
+      return group;
+    }
+  }, {
+    key: "addStand__",
+    value: function addStand__() {
+      // const matcap = new THREE.TextureLoader().load('img/matcap/matcap-12.jpg');
+      // const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-01.jpg');
+      /*
+      const material = new THREE.MeshMatcapMaterial({
+      	color: 0xffffff,
+      	matcap: matcap,
+      });
+      */
+
+      var material = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        metalness: 0.9,
+        roughness: 0.05
         /*
         transparent: true,
         opacity: 0.4,
@@ -3055,7 +3097,7 @@ function () {
 
       });
       var group = new THREE.Group();
-      group.position.set(0, 0, (0, _const.cm)(-20));
+      group.position.set(0, (0, _const.cm)(-20), (0, _const.cm)(-40));
       var path = "models/stand/stand.fbx";
       var loader = new THREE.FBXLoader();
       loader.load(path, function (object) {
@@ -3081,26 +3123,25 @@ function () {
     value: function addToothBrush() {
       var _this3 = this;
 
-      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
+      // const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-11.png');
       var geometry = new _roundBox.default((0, _const.cm)(18), (0, _const.mm)(6), (0, _const.cm)(1), (0, _const.mm)(3), 1, 1, 1, 3);
       var material = new THREE.MeshMatcapMaterial({
         color: 0xffffff,
-        matcap: matcap
-        /*
+        matcap: matcap,
         transparent: true,
         opacity: 0.4,
-        side: THREE.DoubleSide,
-        */
-
+        side: THREE.DoubleSide
       });
       var mesh = new _interactive.default(geometry, material);
-      mesh.position.set(0, (0, _const.cm)(137), -(0, _const.cm)(40));
+      mesh.position.set(0, (0, _const.cm)(117), (0, _const.cm)(-60));
       mesh.name = 'toothbrush';
       var bristlesGeometry = new _roundBox.default((0, _const.cm)(2), (0, _const.mm)(12), (0, _const.cm)(1), (0, _const.mm)(2), 1, 1, 1, 3);
       var bristlesMesh = new THREE.Mesh(bristlesGeometry, material);
       bristlesMesh.position.set(-(0, _const.cm)(8), (0, _const.mm)(9), 0);
       mesh.add(bristlesMesh);
       mesh.on('grab', function (controller) {
+        mesh.userData.speed = 0;
         mesh.falling = false;
         mesh.freeze();
         var target = controller.parent; // target.updateMatrixWorld();
@@ -3120,23 +3161,33 @@ function () {
         }
 
         target.add(mesh);
-        console.log('grab', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
-        console.log(target.name);
+        TweenMax.to(controller.material, 0.4, {
+          opacity: 0.0,
+          ease: Power2.easeInOut
+        }); // console.log('grab', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
+        // console.log(target.name);
       });
       mesh.on('release', function (controller) {
         var target = _this3.scene; // target.updateMatrixWorld();
+        // mesh.parent.updateMatrixWorld();
 
         var position = mesh.position.clone(); // new THREE.Vector3();
 
+        var quaternion = mesh.parent.quaternion.clone();
         mesh.parent.localToWorld(position);
         target.worldToLocal(position);
         mesh.parent.remove(mesh);
+        mesh.position.set(0, 0, 0);
+        mesh.quaternion.premultiply(quaternion);
         mesh.position.set(position.x, position.y, position.z);
         target.add(mesh);
         mesh.unfreeze();
         mesh.falling = true;
-        console.log('release', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
-        console.log(target.name);
+        TweenMax.to(controller.material, 0.4, {
+          opacity: 1.0,
+          ease: Power2.easeInOut
+        }); // console.log('release', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
+        // console.log(target.name);
       });
       /*
       mesh.userData = {
@@ -3155,7 +3206,7 @@ function () {
         mesh.parent.remove(mesh);
         mesh.falling = false;
         setTimeout(function () {
-          mesh.position.set(0, (0, _const.cm)(137), -(0, _const.cm)(40));
+          mesh.position.set(0, (0, _const.cm)(117), (0, _const.cm)(-60));
           mesh.rotation.set(0, 0, 0);
 
           _this3.scene.add(mesh); // console.log('onReset.scened');
@@ -3173,12 +3224,12 @@ function () {
           var ry = mesh.rotation.y;
           var rz = mesh.rotation.z;
           ty -= speed;
-          rx += (0 - rx) / 30;
-          ry += (0 - ry) / 30;
+          rx += (0 - rx) / 1000 * speed;
+          ry += (0 - ry) / 1000 * speed;
           rz += (0, _const.deg)(0.05) * speed;
           mesh.position.set(tx, ty, tz);
           mesh.rotation.set(rx, ry, rz);
-          mesh.userData.speed = speed * 1.2;
+          mesh.userData.speed = speed * 1.1;
 
           if (ty < (0, _const.cm)(-30)) {
             onReset();
@@ -3202,6 +3253,25 @@ function () {
       };
 
       return mesh;
+    }
+  }, {
+    key: "checkCameraPosition",
+    value: function checkCameraPosition() {
+      var tick = this.tick;
+      var camera = this.camera;
+      var controllers = this.controllers;
+      var stand = this.stand;
+      var toothbrush = this.toothbrush;
+      var y = camera.position.y;
+
+      if (y < 1.2 && stand.position.y === (0, _const.cm)(116)) {
+        stand.position.y = y - (0, _const.cm)(40);
+        toothbrush.position.y = y - (0, _const.cm)(39);
+      }
+
+      if (tick % 120 === 0 && controllers) {
+        controllers.setText("camera ".concat(y.toFixed(3)));
+      }
     }
   }, {
     key: "addBG",
@@ -3300,6 +3370,7 @@ function () {
         if (this.controllers) {
           this.controllers.update();
           this.updateRaycaster();
+          this.checkCameraPosition();
         }
 
         camera.onBeforeRender(renderer, scene);
