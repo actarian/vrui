@@ -2,10 +2,10 @@
 
 export default class FreezableMesh extends THREE.Mesh {
 
-	static update(tick, renderer, scene, camera) {
+	static update(renderer, scene, camera, delta, time, tick) {
 		FreezableMesh.items.forEach(x => {
 			if (x.parent) {
-				x.onUpdate(tick, renderer, scene, camera, x, x.material);
+				x.onUpdate(renderer, scene, camera, x, delta, time, tick);
 			}
 		});
 	}
@@ -40,7 +40,7 @@ export default class FreezableMesh extends THREE.Mesh {
 		this.freezed = false;
 	}
 
-	onUpdate() {
+	onUpdate(renderer, scene, camera, object, delta, tick) {
 		// noop
 	}
 

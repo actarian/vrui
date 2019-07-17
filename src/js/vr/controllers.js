@@ -188,7 +188,7 @@ export default class Controllers extends Emittable {
 				this.box = new THREE.BoxHelper(controller.skeleton || controller.model, 0xff0000);
 				this.scene.add(this.box);
 			});
-			pivot.position.set(0, cm(136), -cm(50));
+			pivot.position.set(0, cm(137), -cm(50));
 			this.scene.add(pivot);
 			this.controllers_[0] = controller;
 			this.controller = controller;

@@ -572,10 +572,10 @@ function (_THREE$Mesh) {
     }
   }], [{
     key: "update",
-    value: function update(tick, renderer, scene, camera) {
+    value: function update(renderer, scene, camera, delta, time, tick) {
       FreezableMesh.items.forEach(function (x) {
         if (x.parent) {
-          x.onUpdate(tick, renderer, scene, camera, x, x.material);
+          x.onUpdate(renderer, scene, camera, x, delta, time, tick);
         }
       });
     }
@@ -610,7 +610,7 @@ function (_THREE$Mesh) {
     }
   }, {
     key: "onUpdate",
-    value: function onUpdate() {// noop
+    value: function onUpdate(renderer, scene, camera, object, delta, tick) {// noop
     }
   }]);
 
@@ -1742,7 +1742,7 @@ function (_Emittable) {
 
           _this4.scene.add(_this4.box);
         });
-        pivot.position.set(0, (0, _const.cm)(136), -(0, _const.cm)(50));
+        pivot.position.set(0, (0, _const.cm)(137), -(0, _const.cm)(50));
         this.scene.add(pivot);
         this.controllers_[0] = controller;
         this.controller = controller;
@@ -2703,7 +2703,8 @@ function () {
     this.mouse = {
       x: 0,
       y: 0
-    }; // this.size = { width: 0, height: 0, aspect: 0 };
+    };
+    this.clock = new THREE.Clock(); // this.size = { width: 0, height: 0, aspect: 0 };
     // this.cameraDirection = new THREE.Vector3();
     //
 
@@ -2742,10 +2743,14 @@ function () {
     scene.add(bg);
     */
 
+    var banner = this.banner = this.addBanner();
+    scene.add(banner);
     var cube0 = this.cube0 = this.addRoundedCube(0);
     scene.add(cube0);
     var cube1 = this.cube1 = this.addRoundedCube(1);
     scene.add(cube1);
+    var stand = this.stand = this.addStand();
+    scene.add(stand);
     var toothbrush = this.toothbrush = this.addToothBrush();
     scene.add(toothbrush);
     var controllers = this.controllers = this.addControllers(renderer, vr, scene);
@@ -2917,7 +2922,7 @@ function () {
         matcap: matcap
       });
       var mesh = new _interactive.default(geometry, material);
-      mesh.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(136), -2);
+      mesh.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(137), -2);
       mesh.userData = {
         scale: new THREE.Vector3(1, 1, 1),
         rotation: new THREE.Vector3() // position: new THREE.Vector3(),
@@ -2966,7 +2971,7 @@ function () {
 
       });
       var mesh = new _interactive.default(geometry, material);
-      mesh.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(136), -2);
+      mesh.position.set(index === 0 ? -(0, _const.cm)(30) : (0, _const.cm)(30), (0, _const.cm)(137), -2);
       mesh.userData = {
         scale: new THREE.Vector3(1, 1, 1),
         rotation: new THREE.Vector3()
@@ -3004,6 +3009,60 @@ function () {
       return mesh;
     }
   }, {
+    key: "addBanner",
+    value: function addBanner() {
+      var texture = new THREE.TextureLoader().load('img/banners/professional-27.png');
+      var geometry = new THREE.PlaneGeometry((0, _const.cm)(200), (0, _const.cm)(200), 2, 2); // geometry.rotateX(Math.PI / 2);
+
+      var material = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        map: texture,
+        emissive: 0xcccccc,
+        transparent: true // side: THREE.DoubleSide,
+
+      });
+      var mesh = new _interactive.default(geometry, material);
+      mesh.position.set(0, (0, _const.cm)(200), -6);
+      return mesh;
+    }
+  }, {
+    key: "addStand",
+    value: function addStand() {
+      // const matcap = new THREE.TextureLoader().load('img/matcap/matcap-12.jpg');
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
+      var material = new THREE.MeshMatcapMaterial({
+        color: 0xffffff,
+        matcap: matcap
+        /*
+        transparent: true,
+        opacity: 0.4,
+        side: THREE.DoubleSide,
+        */
+
+      });
+      var group = new THREE.Group();
+      group.position.set(0, 0, (0, _const.cm)(-20));
+      var path = "models/stand/stand.fbx";
+      var loader = new THREE.FBXLoader();
+      loader.load(path, function (object) {
+        object.traverse(function (child) {
+          if (child instanceof THREE.Mesh) {
+            child.material = material;
+            child.geometry.rotateX(child.rotation.x);
+            child.geometry.rotateY(child.rotation.y);
+            child.geometry.rotateZ(child.rotation.z);
+            child.rotation.set(0, 0, 0);
+          }
+        });
+        group.add(object);
+      }, function (xhr) {
+        var progress = xhr.loaded / xhr.total;
+      }, function (error) {
+        console.log("model not found ".concat(path));
+      });
+      return group;
+    }
+  }, {
     key: "addToothBrush",
     value: function addToothBrush() {
       var _this3 = this;
@@ -3021,7 +3080,7 @@ function () {
 
       });
       var mesh = new _interactive.default(geometry, material);
-      mesh.position.set(0, (0, _const.cm)(136), -(0, _const.cm)(40));
+      mesh.position.set(0, (0, _const.cm)(137), -(0, _const.cm)(40));
       mesh.name = 'toothbrush';
       var bristlesGeometry = new _roundBox.default((0, _const.cm)(2), (0, _const.mm)(12), (0, _const.cm)(1), (0, _const.mm)(2), 1, 1, 1, 3);
       var bristlesMesh = new THREE.Mesh(bristlesGeometry, material);
@@ -3082,7 +3141,7 @@ function () {
         mesh.parent.remove(mesh);
         mesh.falling = false;
         setTimeout(function () {
-          mesh.position.set(0, (0, _const.cm)(136), -(0, _const.cm)(40));
+          mesh.position.set(0, (0, _const.cm)(137), -(0, _const.cm)(40));
           mesh.rotation.set(0, 0, 0);
 
           _this3.scene.add(mesh); // console.log('onReset.scened');
@@ -3120,7 +3179,7 @@ function () {
         this.scene.add(box);
       }
 
-      mesh.onUpdate = function (tick, renderer, scene, camera, geometry, material, group) {
+      mesh.onUpdate = function (renderer, scene, camera, object, delta, time, tick) {
         if (box && !mesh.freezed) {
           box.update();
         }
@@ -3213,22 +3272,27 @@ function () {
     }
   }, {
     key: "render",
-    value: function render(delta) {
+    value: function render() {
       try {
+        var delta = this.clock.getDelta();
+        var time = this.clock.getElapsedTime();
+        var tick = Math.floor(time * 60);
+        var renderer = this.renderer;
+        var scene = this.scene;
+        var camera = this.camera;
+
+        _freezable.default.update(renderer, scene, camera, delta, time, tick);
+
         if (this.controllers) {
           this.controllers.update();
           this.updateRaycaster();
         }
 
-        var renderer = this.renderer;
-        var scene = this.scene;
-        var camera = this.camera;
-
-        _freezable.default.update(this.tick, renderer, scene, camera);
-
         camera.onBeforeRender(renderer, scene);
         renderer.render(scene, camera);
-        this.tick++;
+        this.delta = delta;
+        this.time = time;
+        this.tick = tick;
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
