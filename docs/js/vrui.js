@@ -538,9 +538,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
 
-function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
-
 function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
@@ -570,6 +570,15 @@ function (_THREE$Mesh) {
         return x.freezed = freezed;
       });
     }
+  }], [{
+    key: "update",
+    value: function update(tick, renderer, scene, camera) {
+      FreezableMesh.items.forEach(function (x) {
+        if (x.parent) {
+          x.onUpdate(tick, renderer, scene, camera, x, x.material);
+        }
+      });
+    }
   }]);
 
   function FreezableMesh(geometry, material) {
@@ -585,6 +594,7 @@ function (_THREE$Mesh) {
     });
     _this = _possibleConstructorReturn(this, _getPrototypeOf(FreezableMesh).call(this, geometry, material));
     _this.freezed = false;
+    FreezableMesh.items.push(_assertThisInitialized(_this));
     return _this;
   }
 
@@ -598,12 +608,17 @@ function (_THREE$Mesh) {
     value: function unfreeze() {
       this.freezed = false;
     }
+  }, {
+    key: "onUpdate",
+    value: function onUpdate() {// noop
+    }
   }]);
 
   return FreezableMesh;
 }(THREE.Mesh);
 
 exports.default = FreezableMesh;
+FreezableMesh.items = [];
 
 },{}],8:[function(require,module,exports){
 "use strict";
@@ -2658,6 +2673,8 @@ var _const = require("./const");
 
 var _roundBox = _interopRequireDefault(require("./geometries/round-box.geometry"));
 
+var _freezable = _interopRequireDefault(require("./interactive/freezable.mesh"));
+
 var _interactive = _interopRequireDefault(require("./interactive/interactive.mesh"));
 
 var _controllers = _interopRequireDefault(require("./vr/controllers"));
@@ -3011,6 +3028,7 @@ function () {
       bristlesMesh.position.set(-(0, _const.cm)(8), (0, _const.mm)(9), 0);
       mesh.add(bristlesMesh);
       mesh.on('grab', function (controller) {
+        mesh.falling = false;
         mesh.freeze();
         var target = controller.parent; // target.updateMatrixWorld();
 
@@ -3043,6 +3061,7 @@ function () {
         mesh.position.set(position.x, position.y, position.z);
         target.add(mesh);
         mesh.unfreeze();
+        mesh.falling = true;
         console.log('release', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
         console.log(target.name);
       });
@@ -3059,16 +3078,55 @@ function () {
       };
       */
 
-      if (_const.TEST_ENABLED) {
-        var box = new THREE.BoxHelper(mesh, 0x0000ff);
-        this.scene.add(box);
+      var onReset = function onReset() {
+        mesh.parent.remove(mesh);
+        mesh.falling = false;
+        setTimeout(function () {
+          mesh.position.set(0, (0, _const.cm)(136), -(0, _const.cm)(40));
+          mesh.rotation.set(0, 0, 0);
 
-        mesh.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
-          if (!mesh.freezed) {
-            box.update();
+          _this3.scene.add(mesh); // console.log('onReset.scened');
+
+        }, 1000); // console.log('onReset');
+      };
+
+      var onFallDown = function onFallDown() {
+        if (mesh.falling) {
+          var speed = mesh.userData.speed || (0, _const.mm)(0.1);
+          var tx = mesh.position.x;
+          var ty = mesh.position.y;
+          var tz = mesh.position.z;
+          var rx = mesh.rotation.x;
+          var ry = mesh.rotation.y;
+          var rz = mesh.rotation.z;
+          ty -= speed;
+          rx += (0 - rx) / 30;
+          ry += (0 - ry) / 30;
+          rz += (0, _const.deg)(0.05) * speed;
+          mesh.position.set(tx, ty, tz);
+          mesh.rotation.set(rx, ry, rz);
+          mesh.userData.speed = speed * 1.2;
+
+          if (ty < (0, _const.cm)(-30)) {
+            onReset();
           }
-        };
+        }
+      };
+
+      var box;
+
+      if (_const.TEST_ENABLED) {
+        box = new THREE.BoxHelper(mesh, 0x0000ff);
+        this.scene.add(box);
       }
+
+      mesh.onUpdate = function (tick, renderer, scene, camera, geometry, material, group) {
+        if (box && !mesh.freezed) {
+          box.update();
+        }
+
+        onFallDown();
+      };
 
       return mesh;
     }
@@ -3165,6 +3223,9 @@ function () {
         var renderer = this.renderer;
         var scene = this.scene;
         var camera = this.camera;
+
+        _freezable.default.update(this.tick, renderer, scene, camera);
+
         camera.onBeforeRender(renderer, scene);
         renderer.render(scene, camera);
         this.tick++;
@@ -3190,5 +3251,5 @@ function () {
 var instance = new Vrui();
 instance.animate();
 
-},{"./const":1,"./geometries/round-box.geometry":2,"./interactive/interactive.mesh":8,"./vr/controllers":13,"./vr/gamepads":14,"./vr/vr":15}]},{},[16]);
+},{"./const":1,"./geometries/round-box.geometry":2,"./interactive/freezable.mesh":7,"./interactive/interactive.mesh":8,"./vr/controllers":13,"./vr/gamepads":14,"./vr/vr":15}]},{},[16]);
 //# sourceMappingURL=vrui.js.map

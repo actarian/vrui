@@ -5,6 +5,7 @@
 
 import { cm, deg, mm, TEST_ENABLED } from './const';
 import RoundBoxGeometry from './geometries/round-box.geometry';
+import FreezableMesh from './interactive/freezable.mesh';
 import InteractiveMesh from './interactive/interactive.mesh';
 import Controllers from './vr/controllers';
 import { GAMEPAD_HANDS } from './vr/gamepads';
@@ -319,6 +320,7 @@ class Vrui {
 		mesh.add(bristlesMesh);
 
 		mesh.on('grab', (controller) => {
+			mesh.falling = false;
 			mesh.freeze();
 			const target = controller.parent;
 			// target.updateMatrixWorld();
@@ -348,6 +350,7 @@ class Vrui {
 			mesh.position.set(position.x, position.y, position.z);
 			target.add(mesh);
 			mesh.unfreeze();
+			mesh.falling = true;
 			console.log('release', position.x.toFixed(2), position.y.toFixed(2), position.z.toFixed(2));
 			console.log(target.name);
 		});
@@ -363,15 +366,49 @@ class Vrui {
 			mesh.userData.rotation.x += (0.01 + 0.01 * index);
 		};
 		*/
-		if (TEST_ENABLED) {
-			const box = new THREE.BoxHelper(mesh, 0x0000ff);
-			this.scene.add(box);
-			mesh.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
-				if (!mesh.freezed) {
-					box.update();
+		const onReset = () => {
+			mesh.parent.remove(mesh);
+			mesh.falling = false;
+			setTimeout(() => {
+				mesh.position.set(0, cm(136), -cm(40));
+				mesh.rotation.set(0, 0, 0);
+				this.scene.add(mesh);
+				// console.log('onReset.scened');
+			}, 1000);
+			// console.log('onReset');
+		};
+		const onFallDown = () => {
+			if (mesh.falling) {
+				const speed = mesh.userData.speed || mm(0.1);
+				let tx = mesh.position.x;
+				let ty = mesh.position.y;
+				let tz = mesh.position.z;
+				let rx = mesh.rotation.x;
+				let ry = mesh.rotation.y;
+				let rz = mesh.rotation.z;
+				ty -= speed;
+				rx += (0 - rx) / 30;
+				ry += (0 - ry) / 30;
+				rz += deg(0.05) * speed;
+				mesh.position.set(tx, ty, tz);
+				mesh.rotation.set(rx, ry, rz);
+				mesh.userData.speed = speed * 1.2;
+				if (ty < cm(-30)) {
+					onReset();
 				}
-			};
+			}
+		};
+		let box;
+		if (TEST_ENABLED) {
+			box = new THREE.BoxHelper(mesh, 0x0000ff);
+			this.scene.add(box);
 		}
+		mesh.onUpdate = (tick, renderer, scene, camera, geometry, material, group) => {
+			if (box && !mesh.freezed) {
+				box.update();
+			}
+			onFallDown();
+		};
 		return mesh;
 	}
 
@@ -459,6 +496,7 @@ class Vrui {
 			const renderer = this.renderer;
 			const scene = this.scene;
 			const camera = this.camera;
+			FreezableMesh.update(this.tick, renderer, scene, camera);
 			camera.onBeforeRender(renderer, scene);
 			renderer.render(scene, camera);
 			this.tick++;

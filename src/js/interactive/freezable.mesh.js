@@ -1,7 +1,14 @@
 /* jshint esversion: 6 */
 
-
 export default class FreezableMesh extends THREE.Mesh {
+
+	static update(tick, renderer, scene, camera) {
+		FreezableMesh.items.forEach(x => {
+			if (x.parent) {
+				x.onUpdate(tick, renderer, scene, camera, x, x.material);
+			}
+		});
+	}
 
 	get freezed() {
 		return this.freezed_;
@@ -22,6 +29,7 @@ export default class FreezableMesh extends THREE.Mesh {
 		});
 		super(geometry, material);
 		this.freezed = false;
+		FreezableMesh.items.push(this);
 	}
 
 	freeze() {
@@ -32,4 +40,10 @@ export default class FreezableMesh extends THREE.Mesh {
 		this.freezed = false;
 	}
 
+	onUpdate() {
+		// noop
+	}
+
 }
+
+FreezableMesh.items = [];
