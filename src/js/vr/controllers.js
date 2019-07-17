@@ -1,6 +1,6 @@
 /* jshint esversion: 6 */
 
-import { cm, POINTER_RADIUS, TEST_ENABLED } from '../const';
+import { BOUNDING_BOX, cm, POINTER_RADIUS, TEST_ENABLED } from '../const';
 import Emittable from '../interactive/emittable';
 import Controller from './controller/controller';
 import HandController from './controller/hand-controller';
@@ -185,8 +185,10 @@ export default class Controllers extends Emittable {
 			// const controller = new CONTROLLERS.OCULUS_QUEST(pivot, gamepad, this.options);
 			const controller = new CONTROLLERS.HAND(pivot, gamepad, this.options);
 			controller.on('ready', () => {
-				this.box = new THREE.BoxHelper(controller.skeleton || controller.model, 0xff0000);
-				this.scene.add(this.box);
+				if (BOUNDING_BOX) {
+					this.box = new THREE.BoxHelper(controller.skeleton || controller.model, 0xff0000);
+					this.scene.add(this.box);
+				}
 			});
 			pivot.position.set(0, cm(137), -cm(50));
 			this.scene.add(pivot);

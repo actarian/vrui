@@ -8,11 +8,15 @@ exports.cm = cm;
 exports.mm = mm;
 exports.deg = deg;
 exports.addCube = addCube;
-exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TEST_ENABLED = void 0;
+exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TRIGGER_CUBES = exports.BOUNDING_BOX = exports.TEST_ENABLED = void 0;
 
 /* jshint esversion: 6 */
-var TEST_ENABLED = false;
+var TEST_ENABLED = true;
 exports.TEST_ENABLED = TEST_ENABLED;
+var BOUNDING_BOX = false;
+exports.BOUNDING_BOX = BOUNDING_BOX;
+var TRIGGER_CUBES = false;
+exports.TRIGGER_CUBES = TRIGGER_CUBES;
 var ROOM_RADIUS = 200;
 exports.ROOM_RADIUS = ROOM_RADIUS;
 var PANEL_RADIUS = 100;
@@ -1738,9 +1742,11 @@ function (_Emittable) {
 
         var controller = new CONTROLLERS.HAND(pivot, gamepad, this.options);
         controller.on('ready', function () {
-          _this4.box = new THREE.BoxHelper(controller.skeleton || controller.model, 0xff0000);
+          if (_const.BOUNDING_BOX) {
+            _this4.box = new THREE.BoxHelper(controller.skeleton || controller.model, 0xff0000);
 
-          _this4.scene.add(_this4.box);
+            _this4.scene.add(_this4.box);
+          }
         });
         pivot.position.set(0, (0, _const.cm)(137), -(0, _const.cm)(50));
         this.scene.add(pivot);
@@ -2745,10 +2751,14 @@ function () {
 
     var banner = this.banner = this.addBanner();
     scene.add(banner);
-    var cube0 = this.cube0 = this.addRoundedCube(0);
-    scene.add(cube0);
-    var cube1 = this.cube1 = this.addRoundedCube(1);
-    scene.add(cube1);
+
+    if (_const.TRIGGER_CUBES) {
+      var cube0 = this.cube0 = this.addRoundedCube(0);
+      scene.add(cube0);
+      var cube1 = this.cube1 = this.addRoundedCube(1);
+      scene.add(cube1);
+    }
+
     var stand = this.stand = this.addStand();
     scene.add(stand);
     var toothbrush = this.toothbrush = this.addToothBrush();
@@ -2855,60 +2865,64 @@ function () {
               break;
           }
         });
-        controllers.on('release', function (button) {
-          console.log('vrui.release', button.gamepad.hand, button.index);
-        });
-        controllers.on('left', function (axis) {
-          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-            console.log('vrui.left', axis.gamepad.hand, axis.index);
-            TweenMax.to(cube0.userData.rotation, 0.3, {
-              y: cube0.userData.rotation.y - Math.PI / 2,
-              ease: Power2.easeInOut
-            });
-          }
-        });
-        controllers.on('right', function (axis) {
-          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-            console.log('vrui.right', axis.gamepad.hand, axis.index);
-            TweenMax.to(cube0.userData.rotation, 0.3, {
-              y: cube0.userData.rotation.y + Math.PI / 2,
-              ease: Power2.easeInOut
-            });
-          }
-        });
-        controllers.on('up', function (axis) {
-          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-            console.log('vrui.up', axis.gamepad.hand, axis.index);
-            var s = Math.min(2.0, cube0.userData.scale.x + 0.1);
-            TweenMax.to(cube0.userData.scale, 0.3, {
-              x: s,
-              y: s,
-              z: s,
-              ease: Power2.easeInOut
-            });
-          }
-        });
-        controllers.on('down', function (axis) {
-          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-            console.log('vrui.down', axis.gamepad.hand, axis.index);
-            var s = Math.max(0.1, cube0.userData.scale.x - 0.1);
-            TweenMax.to(cube0.userData.scale, 0.3, {
-              x: s,
-              y: s,
-              z: s,
-              ease: Power2.easeInOut
-            });
-          }
-        });
-        controllers.on('axis', function (axis) {
-          console.log('vrui.axis', axis.gamepad.hand, axis.index);
 
-          if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.RIGHT) {
-            var s = Math.max(0.1, Math.min(2, cube1.scale.x + axis.y * 0.1));
-            cube1.userData.scale.set(s, s, s);
-            cube1.userData.rotation.y += axis.x * 0.2;
-          }
-        });
+        if (_const.TRIGGER_CUBES) {
+          controllers.on('release', function (button) {
+            console.log('vrui.release', button.gamepad.hand, button.index);
+          });
+          controllers.on('left', function (axis) {
+            if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+              console.log('vrui.left', axis.gamepad.hand, axis.index);
+              TweenMax.to(cube0.userData.rotation, 0.3, {
+                y: cube0.userData.rotation.y - Math.PI / 2,
+                ease: Power2.easeInOut
+              });
+            }
+          });
+          controllers.on('right', function (axis) {
+            if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+              console.log('vrui.right', axis.gamepad.hand, axis.index);
+              TweenMax.to(cube0.userData.rotation, 0.3, {
+                y: cube0.userData.rotation.y + Math.PI / 2,
+                ease: Power2.easeInOut
+              });
+            }
+          });
+          controllers.on('up', function (axis) {
+            if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+              console.log('vrui.up', axis.gamepad.hand, axis.index);
+              var s = Math.min(2.0, cube0.userData.scale.x + 0.1);
+              TweenMax.to(cube0.userData.scale, 0.3, {
+                x: s,
+                y: s,
+                z: s,
+                ease: Power2.easeInOut
+              });
+            }
+          });
+          controllers.on('down', function (axis) {
+            if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+              console.log('vrui.down', axis.gamepad.hand, axis.index);
+              var s = Math.max(0.1, cube0.userData.scale.x - 0.1);
+              TweenMax.to(cube0.userData.scale, 0.3, {
+                x: s,
+                y: s,
+                z: s,
+                ease: Power2.easeInOut
+              });
+            }
+          });
+          controllers.on('axis', function (axis) {
+            console.log('vrui.axis', axis.gamepad.hand, axis.index);
+
+            if (axis.gamepad.hand === _gamepads.GAMEPAD_HANDS.RIGHT) {
+              var s = Math.max(0.1, Math.min(2, cube1.scale.x + axis.y * 0.1));
+              cube1.userData.scale.set(s, s, s);
+              cube1.userData.rotation.y += axis.x * 0.2;
+            }
+          });
+        }
+
         return controllers;
       }
     }
@@ -2978,7 +2992,7 @@ function () {
       };
       var box;
 
-      if (_const.TEST_ENABLED) {
+      if (_const.BOUNDING_BOX) {
         box = new THREE.BoxHelper(mesh, 0x0000ff);
         this.scene.add(box);
       }
@@ -3174,7 +3188,7 @@ function () {
 
       var box;
 
-      if (_const.TEST_ENABLED) {
+      if (_const.BOUNDING_BOX) {
         box = new THREE.BoxHelper(mesh, 0x0000ff);
         this.scene.add(box);
       }
