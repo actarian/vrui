@@ -1,6 +1,6 @@
 /* jshint esversion: 6 */
 
-export const TEST_ENABLED = false;
+export const TEST_ENABLED = true;
 export const BOUNDING_BOX = false;
 export const TRIGGER_CUBES = false;
 export const ROOM_RADIUS = 200;

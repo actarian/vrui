@@ -11,7 +11,7 @@ exports.addCube = addCube;
 exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TRIGGER_CUBES = exports.BOUNDING_BOX = exports.TEST_ENABLED = void 0;
 
 /* jshint esversion: 6 */
-var TEST_ENABLED = false;
+var TEST_ENABLED = true;
 exports.TEST_ENABLED = TEST_ENABLED;
 var BOUNDING_BOX = false;
 exports.BOUNDING_BOX = BOUNDING_BOX;
@@ -1272,7 +1272,7 @@ function (_Controller) {
         transparent: true,
         opacity: 1,
         skinning: true,
-        side: THREE.DoubleSide
+        side: THREE.BackSide
       });
       /*
       const texture = new THREE.TextureLoader().load(`${path}.jpg`);
@@ -1307,8 +1307,9 @@ function (_Controller) {
             // child.geometry.computeBoundingBox();
           }
         }); // object.scale.set(0.1, 0.1, 0.1);
+        // const s = hand === GAMEPAD_HANDS.LEFT ? 0.045 : 0.045;
 
-        var s = hand === _gamepads.GAMEPAD_HANDS.LEFT ? 0.045 : 0.045;
+        var s = 1;
         object.scale.set(hand === _gamepads.GAMEPAD_HANDS.LEFT ? -s : s, s, s);
         mesh.add(object);
         _this.material = material;

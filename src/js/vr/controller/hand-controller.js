@@ -21,7 +21,7 @@ export default class HandController extends Controller {
 			transparent: true,
 			opacity: 1,
 			skinning: true,
-			side: THREE.DoubleSide,
+			side: THREE.BackSide,
 		});
 		/*
 		const texture = new THREE.TextureLoader().load(`${path}.jpg`);
@@ -57,7 +57,8 @@ export default class HandController extends Controller {
 				}
 			});
 			// object.scale.set(0.1, 0.1, 0.1);
-			const s = hand === GAMEPAD_HANDS.LEFT ? 0.045 : 0.045;
+			// const s = hand === GAMEPAD_HANDS.LEFT ? 0.045 : 0.045;
+			const s = 1;
 			object.scale.set(hand === GAMEPAD_HANDS.LEFT ? -s : s, s, s);
 			mesh.add(object);
 			this.material = material;
