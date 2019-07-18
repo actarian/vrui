@@ -5,7 +5,9 @@
 
 import { BOUNDING_BOX, cm, deg, mm, TEST_ENABLED, TRIGGER_CUBES } from './const';
 import RoundBoxGeometry from './geometries/round-box.geometry';
+import FreezableGroup from './interactive/freezable.group';
 import FreezableMesh from './interactive/freezable.mesh';
+import GrabbableGroup from './interactive/grabbable.group';
 import InteractiveMesh from './interactive/interactive.mesh';
 import Controllers from './vr/controllers';
 import { GAMEPAD_HANDS } from './vr/gamepads';
@@ -48,8 +50,10 @@ class Vrui {
 		const camera = this.camera = this.addCamera();
 		scene.add(camera);
 
-		const light = new THREE.HemisphereLight(0xffffff, 0x330000, 10);
+		const light = new THREE.HemisphereLight(0xffffff, 0x330000, 1.2);
 		scene.add(light);
+
+		const materials = this.materials = this.addMaterials(scene.background);
 
 		/*
 		const bg = this.bg = this.addBG();
@@ -220,6 +224,113 @@ class Vrui {
 		}
 	}
 
+	addMaterials(texture) {
+		/*
+		const texture = new THREE.loader().load('img/matcap.jpg');
+		const material = new THREE.MeshMatcapMaterial({
+			color: 0xffffff,
+			matcap: texture,
+			transparent: true,
+			opacity: 1,
+		});
+		*/
+		// const texture = this.getEnvMap();
+		const bodyPrimaryClear = this.getBodyPrimaryClear(texture);
+		const logoSilver = this.getLogoSilver(texture);
+		const bodySecondary = this.getBodySecondary(texture);
+		const bristlesPrimary = this.getBristlesPrimary();
+		const bristlesSecondary = this.getBristlesSecondary();
+		return {
+			bodyPrimaryClear,
+			bodySecondary,
+			bristlesPrimary,
+			bristlesSecondary,
+			logoSilver,
+		};
+	}
+
+	getBodyPrimaryClear(texture) {
+		const material = new THREE.MeshPhongMaterial({
+			color: 0xffffff,
+			envMap: texture,
+			transparent: true,
+			refractionRatio: 0.6,
+			reflectivity: 0.8,
+			opacity: 0.25,
+			alphaTest: 0.2,
+			/*
+			refractionRatio: 0.99,
+			reflectivity: 0.99,
+			opacity: 0.5,
+			*/
+			side: THREE.DoubleSide,
+			// blending: THREE.AdditiveBlending,
+		});
+		// material.vertexTangents = true;
+		return material;
+	}
+
+	getBodySecondary(texture) {
+		const material = new THREE.MeshStandardMaterial({
+			color: 0xe11e26,
+			// emissive: 0x4f0300,
+			roughness: 0.2,
+			metalness: 0.2,
+			// envMap: texture,
+			// envMapIntensity: 0.4,
+			// The refractionRatio must have value in the range 0 to 1.
+			// The default value, very close to 1, give almost invisible glass.
+			// refractionRatio: 0,
+			// side: THREE.DoubleSide,
+		});
+		return material;
+	}
+
+	getBristlesPrimary(texture) {
+		// const lightMap = new THREE.TextureLoader().load('img/scalare-33-bristlesPrimary-lightmap.jpg');
+		const material = new THREE.MeshStandardMaterial({
+			color: 0x024c99, // 0x1f45c0,
+			// emissive: 0x333333,
+			// map: lightMap,
+			// normalMap: lightMap,
+			// metalnessMap: lightMap,
+			roughness: 0.9,
+			metalness: 0.0,
+		});
+		return material;
+	}
+
+	getBristlesSecondary(texture) {
+		// const lightMap = new THREE.TextureLoader().load('img/scalare-33-bristlesSecondary-lightmap.jpg');
+		const material = new THREE.MeshStandardMaterial({
+			color: 0x15b29a, // 0x1aac4e,
+			// emissive: 0x333333,
+			// map: lightMap,
+			// normalMap: lightMap,
+			// metalnessMap: lightMap,
+			roughness: 0.9,
+			metalness: 0.0,
+		});
+		return material;
+	}
+
+	getLogoSilver() {
+		const texture = new THREE.TextureLoader().load('img/models/toothbrush-logo.png');
+		const material = new THREE.MeshStandardMaterial({
+			color: 0xffffff,
+			map: texture,
+			transparent: true,
+			roughness: 0.15,
+			metalness: 0.9,
+			// envMap: texture,
+			// side: THREE.DoubleSide,
+			//
+			// opacity: 1,
+			// alphaTest: 0.1,
+		});
+		return material;
+	}
+
 	addCube(index) {
 		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-00.jpg');
 		const geometry = new THREE.BoxGeometry(cm(20), cm(20), cm(20));
@@ -339,8 +450,8 @@ class Vrui {
 	addStand() {
 		const material = new THREE.MeshStandardMaterial({
 			color: 0xffffff,
-			metalness: 0.9,
-			roughness: 0.05,
+			roughness: 0.2,
+			metalness: 0.2,
 		});
 		const geometry = new RoundBoxGeometry(cm(40), mm(10), cm(20), mm(5), 1, 1, 1, 5);
 		const group = new THREE.Mesh(geometry, material);
@@ -392,6 +503,135 @@ class Vrui {
 	}
 
 	addToothBrush() {
+		const mesh = new GrabbableGroup();
+		const loader = new THREE.FBXLoader(); // new THREE.OBJLoader();
+		loader.load(`models/toothbrush/professional-27.fbx`, (object) => {
+				object.traverse((child) => {
+					if (child instanceof THREE.Mesh) {
+						// child.geometry.scale(2.54, 2.54, 2.54);
+						switch (child.name) {
+							case 'body-primary':
+							case 'bubble':
+								child.geometry.computeFaceNormals();
+								child.geometry.computeVertexNormals(true);
+								child.material = this.materials.bodyPrimaryClear;
+								mesh.body = child;
+								break;
+							case 'body-secondary':
+								child.geometry.computeFaceNormals();
+								child.geometry.computeVertexNormals(true);
+								child.material = this.materials.bodySecondary;
+								mesh.color = child;
+								break;
+							case 'bristles-primary':
+								child.material = this.materials.bristlesPrimary;
+								break;
+							case 'bristles-secondary':
+								child.material = this.materials.bristlesSecondary;
+								break;
+							case 'logo':
+								child.material = this.materials.logoSilver;
+								mesh.logo = child;
+								break;
+						}
+					}
+				});
+				mesh.add(object);
+			},
+			(xhr) => {
+				// console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+			},
+			(error) => {
+				console.log('An error happened');
+			});
+		mesh.position.set(0, cm(117), cm(-60));
+		mesh.name = 'toothbrush';
+		mesh.on('grab', (controller) => {
+			mesh.userData.speed = 0;
+			mesh.falling = false;
+			mesh.freeze();
+			const target = controller.parent;
+			const position = mesh.position.clone();
+			mesh.parent.localToWorld(position);
+			target.worldToLocal(position);
+			mesh.parent.remove(mesh);
+			if (controller.gamepad.hand === GAMEPAD_HANDS.LEFT) {
+				mesh.position.set(cm(1), cm(2), cm(0));
+				mesh.rotation.set(deg(180), deg(0), deg(115));
+			} else {
+				mesh.position.set(cm(-1), cm(3), cm(-1));
+				mesh.rotation.set(0, deg(10), deg(-60));
+			}
+			target.add(mesh);
+			TweenMax.to(controller.material, 0.4, {
+				opacity: 0.0,
+				ease: Power2.easeInOut,
+			});
+		});
+		mesh.on('release', (controller) => {
+			console.log('release');
+			const target = this.scene;
+			const position = mesh.position.clone(); // new THREE.Vector3();
+			const quaternion = mesh.parent.quaternion.clone();
+			mesh.parent.localToWorld(position);
+			target.worldToLocal(position);
+			mesh.parent.remove(mesh);
+			mesh.position.set(0, 0, 0);
+			mesh.quaternion.premultiply(quaternion);
+			mesh.position.set(position.x, position.y, position.z);
+			target.add(mesh);
+			mesh.unfreeze();
+			mesh.falling = true;
+			TweenMax.to(controller.material, 0.4, {
+				opacity: 1.0,
+				ease: Power2.easeInOut
+			});
+		});
+		const onReset = () => {
+			mesh.parent.remove(mesh);
+			mesh.falling = false;
+			setTimeout(() => {
+				mesh.position.set(0, cm(117), cm(-60));
+				mesh.rotation.set(0, 0, 0);
+				this.scene.add(mesh);
+			}, 1000);
+		};
+		const onFallDown = () => {
+			if (mesh.falling) {
+				const speed = mesh.userData.speed || mm(0.1);
+				let tx = mesh.position.x;
+				let ty = mesh.position.y;
+				let tz = mesh.position.z;
+				let rx = mesh.rotation.x;
+				let ry = mesh.rotation.y;
+				let rz = mesh.rotation.z;
+				ty -= speed;
+				rx += (0 - rx) / 1000 * speed;
+				ry += (0 - ry) / 1000 * speed;
+				rz += deg(0.05) * speed;
+				mesh.position.set(tx, ty, tz);
+				mesh.rotation.set(rx, ry, rz);
+				mesh.userData.speed = speed * 1.1;
+				if (ty < cm(-30)) {
+					onReset();
+				}
+			}
+		};
+		let box;
+		if (BOUNDING_BOX) {
+			box = new THREE.BoxHelper(mesh, 0x0000ff);
+			this.scene.add(box);
+		}
+		mesh.onUpdate = (renderer, scene, camera, object, delta, time, tick) => {
+			if (box && !mesh.freezed) {
+				box.update();
+			}
+			onFallDown();
+		};
+		return mesh;
+	}
+
+	addToothBrush__() {
 		// const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
 		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-11.png');
 		const geometry = new RoundBoxGeometry(cm(18), mm(6), cm(1), mm(3), 1, 1, 1, 3);
@@ -603,6 +843,7 @@ class Vrui {
 					}
 					*/
 				}
+				GrabbableGroup.grabtest(controllers);
 			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
@@ -618,6 +859,7 @@ class Vrui {
 			const scene = this.scene;
 			const camera = this.camera;
 			FreezableMesh.update(renderer, scene, camera, delta, time, tick);
+			FreezableGroup.update(renderer, scene, camera, delta, time, tick);
 			if (this.controllers) {
 				this.controllers.update();
 				this.updateRaycaster();

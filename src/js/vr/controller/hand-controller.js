@@ -14,7 +14,17 @@ export default class HandController extends Controller {
 		const format = '.fbx';
 		const path = `${HandController.FOLDER}/${hand}/${hand}-animated`;
 		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
-		// const texture = new THREE.TextureLoader().load(`${path}.jpg`);
+		const material = new THREE.MeshMatcapMaterial({
+			color: 0xffffff,
+			matcap: matcap,
+			alphaTest: 0.1,
+			transparent: true,
+			opacity: 1,
+			skinning: true,
+			side: THREE.DoubleSide,
+		});
+		/*
+		const texture = new THREE.TextureLoader().load(`${path}.jpg`);
 		const material = new THREE.MeshStandardMaterial({
 			color: 0xffffff,
 			// map: texture,
@@ -25,6 +35,7 @@ export default class HandController extends Controller {
 			skinning: true,
 			side: THREE.DoubleSide,
 		});
+		*/
 		const mesh = new THREE.Group();
 		const loader = format === '.fbx' ? new THREE.FBXLoader() : new THREE.OBJLoader();
 		let i = 0;

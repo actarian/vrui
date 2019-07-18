@@ -11,7 +11,7 @@ exports.addCube = addCube;
 exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TRIGGER_CUBES = exports.BOUNDING_BOX = exports.TEST_ENABLED = void 0;
 
 /* jshint esversion: 6 */
-var TEST_ENABLED = true;
+var TEST_ENABLED = false;
 exports.TEST_ENABLED = TEST_ENABLED;
 var BOUNDING_BOX = false;
 exports.BOUNDING_BOX = BOUNDING_BOX;
@@ -467,9 +467,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
 
-function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
-
 function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
@@ -499,6 +499,15 @@ function (_THREE$Group) {
         return x.freezed = freezed;
       });
     }
+  }], [{
+    key: "update",
+    value: function update(renderer, scene, camera, delta, time, tick) {
+      FreezableGroup.items.forEach(function (x) {
+        if (x.parent) {
+          x.onUpdate(renderer, scene, camera, x, delta, time, tick);
+        }
+      });
+    }
   }]);
 
   function FreezableGroup() {
@@ -508,6 +517,7 @@ function (_THREE$Group) {
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(FreezableGroup).call(this));
     _this.freezed = false;
+    FreezableGroup.items.push(_assertThisInitialized(_this));
     return _this;
   }
 
@@ -521,12 +531,17 @@ function (_THREE$Group) {
     value: function unfreeze() {
       this.freezed = false;
     }
+  }, {
+    key: "onUpdate",
+    value: function onUpdate(renderer, scene, camera, object, delta, tick) {// noop
+    }
   }]);
 
   return FreezableGroup;
 }(THREE.Group);
 
 exports.default = FreezableGroup;
+FreezableGroup.items = [];
 
 },{}],7:[function(require,module,exports){
 "use strict";
@@ -625,6 +640,118 @@ exports.default = FreezableMesh;
 FreezableMesh.items = [];
 
 },{}],8:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _emittable = _interopRequireDefault(require("./emittable.group"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var GrabbableGroup =
+/*#__PURE__*/
+function (_EmittableGroup) {
+  _inherits(GrabbableGroup, _EmittableGroup);
+
+  _createClass(GrabbableGroup, null, [{
+    key: "grabtest",
+    value: function grabtest(controllers) {
+      var down = controllers.gamepads.button;
+      var controller = controllers.controller;
+      var items = GrabbableGroup.items.filter(function (x) {
+        return !x.freezed;
+      });
+      var grabbedItem;
+
+      if (controller && down && down.index === 2) {
+        var controllerPosition = controller.parent.position;
+        items.reduce(function (p, x, i) {
+          var distance = x.position.distanceTo(controllerPosition);
+
+          if (distance <= 0.1) {
+            if (distance < p) {
+              grabbedItem = x;
+              return distance;
+            } else {
+              return p;
+            }
+          }
+
+          return p;
+        }, Number.POSITIVE_INFINITY);
+      } else {
+        GrabbableGroup.items.filter(function (x) {
+          return x.grab;
+        }).forEach(function (x) {
+          return x.grab = undefined;
+        });
+      }
+
+      items.forEach(function (x) {
+        x.grab = x === grabbedItem ? controller : undefined;
+      });
+      return grabbedItem;
+    }
+  }]);
+
+  function GrabbableGroup() {
+    var _this;
+
+    _classCallCheck(this, GrabbableGroup);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(GrabbableGroup).call(this));
+    GrabbableGroup.items.push(_assertThisInitialized(_this));
+    return _this;
+  }
+
+  _createClass(GrabbableGroup, [{
+    key: "grab",
+    get: function get() {
+      return this.grab_;
+    },
+    set: function set(grab) {
+      if (this.grab_ !== grab) {
+        var grab_ = this.grab_;
+        this.grab_ = grab;
+
+        if (grab) {
+          this.emit('grab', grab);
+        } else {
+          this.emit('release', grab_);
+        }
+      }
+    }
+  }]);
+
+  return GrabbableGroup;
+}(_emittable.default);
+
+exports.default = GrabbableGroup;
+GrabbableGroup.items = [];
+GrabbableGroup.center = new THREE.Vector3();
+
+},{"./emittable.group":3}],9:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -819,7 +946,7 @@ exports.default = InteractiveMesh;
 InteractiveMesh.items = [];
 InteractiveMesh.center = new THREE.Vector3();
 
-},{"./emittable.mesh":5}],9:[function(require,module,exports){
+},{"./emittable.mesh":5}],10:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -831,7 +958,7 @@ var ControllerFragGlsl =
 "\n#define MATCAP\nuniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float emissiveIntensity;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tvec4 emissiveColor = vec4( emissive, opacity );\n\t#include <logdepthbuf_fragment>\n\t/* #include <map_fragment> */\n\t#ifdef USE_MAP\n\t\tvec4 texelColor = texture2D( map, vUv );\n\t\ttexelColor = mapTexelToLinear( texelColor );\n\t\tdiffuseColor *= texelColor;\n\t\tdiffuseColor = mix(diffuseColor, emissiveColor, emissiveIntensity);\n\t#endif\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * (matcapColor.rgb + emissiveIntensity * 0.5); // max(matcapColor.rgb, emissiveColor.rgb);\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <premultiplied_alpha_fragment>\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n}\n";
 exports.ControllerFragGlsl = ControllerFragGlsl;
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1083,7 +1210,7 @@ function (_EmittableGroup) {
 
 exports.default = Controller;
 
-},{"../../const":1,"../../interactive/emittable.group":3,"../gamepads":14}],11:[function(require,module,exports){
+},{"../../const":1,"../../interactive/emittable.group":3,"../gamepads":15}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1137,18 +1264,30 @@ function (_Controller) {
 
       var format = '.fbx';
       var path = "".concat(HandController.FOLDER, "/").concat(hand, "/").concat(hand, "-animated");
-      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg'); // const texture = new THREE.TextureLoader().load(`${path}.jpg`);
-
-      var material = new THREE.MeshStandardMaterial({
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
+      var material = new THREE.MeshMatcapMaterial({
         color: 0xffffff,
-        // map: texture,
-        // matcap: matcap,
+        matcap: matcap,
         alphaTest: 0.1,
         transparent: true,
         opacity: 1,
         skinning: true,
         side: THREE.DoubleSide
       });
+      /*
+      const texture = new THREE.TextureLoader().load(`${path}.jpg`);
+      const material = new THREE.MeshStandardMaterial({
+      	color: 0xffffff,
+      	// map: texture,
+      	// matcap: matcap,
+      	alphaTest: 0.1,
+      	transparent: true,
+      	opacity: 1,
+      	skinning: true,
+      	side: THREE.DoubleSide,
+      });
+      */
+
       var mesh = new THREE.Group();
       var loader = format === '.fbx' ? new THREE.FBXLoader() : new THREE.OBJLoader();
       var i = 0;
@@ -1271,7 +1410,7 @@ function (_Controller) {
 exports.default = HandController;
 HandController.FOLDER = "models/hand";
 
-},{"../../const":1,"../gamepads":14,"./controller":10}],12:[function(require,module,exports){
+},{"../../const":1,"../gamepads":15,"./controller":11}],13:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1485,7 +1624,7 @@ function (_Controller) {
 exports.default = OculusQuestController;
 OculusQuestController.FOLDER = "models/oculus-quest";
 
-},{"../../const":1,"../gamepads":14,"./controller":10,"./controller-frag.glsl":9}],13:[function(require,module,exports){
+},{"../../const":1,"../gamepads":15,"./controller":11,"./controller-frag.glsl":10}],14:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1889,7 +2028,7 @@ function (_Emittable) {
 
 exports.default = Controllers;
 
-},{"../const":1,"../interactive/emittable":4,"./controller/controller":10,"./controller/hand-controller":11,"./controller/oculus-quest-controller":12,"./gamepads":14}],14:[function(require,module,exports){
+},{"../const":1,"../interactive/emittable":4,"./controller/controller":11,"./controller/hand-controller":12,"./controller/oculus-quest-controller":13,"./gamepads":15}],15:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2293,7 +2432,7 @@ function (_THREE$Vector) {
 
 exports.GamepadAxis = GamepadAxis;
 
-},{"../interactive/emittable":4}],15:[function(require,module,exports){
+},{"../interactive/emittable":4}],16:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2682,14 +2821,18 @@ VRDisplays[0]: VRDisplay {
 
 exports.VR = VR;
 
-},{"../interactive/emittable":4}],16:[function(require,module,exports){
+},{"../interactive/emittable":4}],17:[function(require,module,exports){
 "use strict";
 
 var _const = require("./const");
 
 var _roundBox = _interopRequireDefault(require("./geometries/round-box.geometry"));
 
-var _freezable = _interopRequireDefault(require("./interactive/freezable.mesh"));
+var _freezable = _interopRequireDefault(require("./interactive/freezable.group"));
+
+var _freezable2 = _interopRequireDefault(require("./interactive/freezable.mesh"));
+
+var _grabbable = _interopRequireDefault(require("./interactive/grabbable.group"));
 
 var _interactive = _interopRequireDefault(require("./interactive/interactive.mesh"));
 
@@ -2749,8 +2892,9 @@ function () {
     this.addSceneBackground(renderer, scene);
     var camera = this.camera = this.addCamera();
     scene.add(camera);
-    var light = new THREE.HemisphereLight(0xffffff, 0x330000, 10);
+    var light = new THREE.HemisphereLight(0xffffff, 0x330000, 1.2);
     scene.add(light);
+    var materials = this.materials = this.addMaterials(scene.background);
     /*
     const bg = this.bg = this.addBG();
     scene.add(bg);
@@ -2934,6 +3078,122 @@ function () {
       }
     }
   }, {
+    key: "addMaterials",
+    value: function addMaterials(texture) {
+      /*
+      const texture = new THREE.loader().load('img/matcap.jpg');
+      const material = new THREE.MeshMatcapMaterial({
+      	color: 0xffffff,
+      	matcap: texture,
+      	transparent: true,
+      	opacity: 1,
+      });
+      */
+      // const texture = this.getEnvMap();
+      var bodyPrimaryClear = this.getBodyPrimaryClear(texture);
+      var logoSilver = this.getLogoSilver(texture);
+      var bodySecondary = this.getBodySecondary(texture);
+      var bristlesPrimary = this.getBristlesPrimary();
+      var bristlesSecondary = this.getBristlesSecondary();
+      return {
+        bodyPrimaryClear: bodyPrimaryClear,
+        bodySecondary: bodySecondary,
+        bristlesPrimary: bristlesPrimary,
+        bristlesSecondary: bristlesSecondary,
+        logoSilver: logoSilver
+      };
+    }
+  }, {
+    key: "getBodyPrimaryClear",
+    value: function getBodyPrimaryClear(texture) {
+      var material = new THREE.MeshPhongMaterial({
+        color: 0xffffff,
+        envMap: texture,
+        transparent: true,
+        refractionRatio: 0.6,
+        reflectivity: 0.8,
+        opacity: 0.25,
+        alphaTest: 0.2,
+
+        /*
+        refractionRatio: 0.99,
+        reflectivity: 0.99,
+        opacity: 0.5,
+        */
+        side: THREE.DoubleSide // blending: THREE.AdditiveBlending,
+
+      }); // material.vertexTangents = true;
+
+      return material;
+    }
+  }, {
+    key: "getBodySecondary",
+    value: function getBodySecondary(texture) {
+      var material = new THREE.MeshStandardMaterial({
+        color: 0xe11e26,
+        // emissive: 0x4f0300,
+        roughness: 0.2,
+        metalness: 0.2 // envMap: texture,
+        // envMapIntensity: 0.4,
+        // The refractionRatio must have value in the range 0 to 1.
+        // The default value, very close to 1, give almost invisible glass.
+        // refractionRatio: 0,
+        // side: THREE.DoubleSide,
+
+      });
+      return material;
+    }
+  }, {
+    key: "getBristlesPrimary",
+    value: function getBristlesPrimary(texture) {
+      // const lightMap = new THREE.TextureLoader().load('img/scalare-33-bristlesPrimary-lightmap.jpg');
+      var material = new THREE.MeshStandardMaterial({
+        color: 0x024c99,
+        // 0x1f45c0,
+        // emissive: 0x333333,
+        // map: lightMap,
+        // normalMap: lightMap,
+        // metalnessMap: lightMap,
+        roughness: 0.9,
+        metalness: 0.0
+      });
+      return material;
+    }
+  }, {
+    key: "getBristlesSecondary",
+    value: function getBristlesSecondary(texture) {
+      // const lightMap = new THREE.TextureLoader().load('img/scalare-33-bristlesSecondary-lightmap.jpg');
+      var material = new THREE.MeshStandardMaterial({
+        color: 0x15b29a,
+        // 0x1aac4e,
+        // emissive: 0x333333,
+        // map: lightMap,
+        // normalMap: lightMap,
+        // metalnessMap: lightMap,
+        roughness: 0.9,
+        metalness: 0.0
+      });
+      return material;
+    }
+  }, {
+    key: "getLogoSilver",
+    value: function getLogoSilver() {
+      var texture = new THREE.TextureLoader().load('img/models/toothbrush-logo.png');
+      var material = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        map: texture,
+        transparent: true,
+        roughness: 0.15,
+        metalness: 0.9 // envMap: texture,
+        // side: THREE.DoubleSide,
+        //
+        // opacity: 1,
+        // alphaTest: 0.1,
+
+      });
+      return material;
+    }
+  }, {
     key: "addCube",
     value: function addCube(index) {
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-00.jpg');
@@ -3064,8 +3324,8 @@ function () {
     value: function addStand() {
       var material = new THREE.MeshStandardMaterial({
         color: 0xffffff,
-        metalness: 0.9,
-        roughness: 0.05
+        roughness: 0.2,
+        metalness: 0.2
       });
       var geometry = new _roundBox.default((0, _const.cm)(40), (0, _const.mm)(10), (0, _const.cm)(20), (0, _const.mm)(5), 1, 1, 1, 5);
       var group = new THREE.Mesh(geometry, material);
@@ -3123,6 +3383,152 @@ function () {
     value: function addToothBrush() {
       var _this3 = this;
 
+      var mesh = new _grabbable.default();
+      var loader = new THREE.FBXLoader(); // new THREE.OBJLoader();
+
+      loader.load("models/toothbrush/professional-27.fbx", function (object) {
+        object.traverse(function (child) {
+          if (child instanceof THREE.Mesh) {
+            // child.geometry.scale(2.54, 2.54, 2.54);
+            switch (child.name) {
+              case 'body-primary':
+              case 'bubble':
+                child.geometry.computeFaceNormals();
+                child.geometry.computeVertexNormals(true);
+                child.material = _this3.materials.bodyPrimaryClear;
+                mesh.body = child;
+                break;
+
+              case 'body-secondary':
+                child.geometry.computeFaceNormals();
+                child.geometry.computeVertexNormals(true);
+                child.material = _this3.materials.bodySecondary;
+                mesh.color = child;
+                break;
+
+              case 'bristles-primary':
+                child.material = _this3.materials.bristlesPrimary;
+                break;
+
+              case 'bristles-secondary':
+                child.material = _this3.materials.bristlesSecondary;
+                break;
+
+              case 'logo':
+                child.material = _this3.materials.logoSilver;
+                mesh.logo = child;
+                break;
+            }
+          }
+        });
+        mesh.add(object);
+      }, function (xhr) {// console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+      }, function (error) {
+        console.log('An error happened');
+      });
+      mesh.position.set(0, (0, _const.cm)(117), (0, _const.cm)(-60));
+      mesh.name = 'toothbrush';
+      mesh.on('grab', function (controller) {
+        mesh.userData.speed = 0;
+        mesh.falling = false;
+        mesh.freeze();
+        var target = controller.parent;
+        var position = mesh.position.clone();
+        mesh.parent.localToWorld(position);
+        target.worldToLocal(position);
+        mesh.parent.remove(mesh);
+
+        if (controller.gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+          mesh.position.set((0, _const.cm)(1), (0, _const.cm)(2), (0, _const.cm)(0));
+          mesh.rotation.set((0, _const.deg)(180), (0, _const.deg)(0), (0, _const.deg)(115));
+        } else {
+          mesh.position.set((0, _const.cm)(-1), (0, _const.cm)(3), (0, _const.cm)(-1));
+          mesh.rotation.set(0, (0, _const.deg)(10), (0, _const.deg)(-60));
+        }
+
+        target.add(mesh);
+        TweenMax.to(controller.material, 0.4, {
+          opacity: 0.0,
+          ease: Power2.easeInOut
+        });
+      });
+      mesh.on('release', function (controller) {
+        console.log('release');
+        var target = _this3.scene;
+        var position = mesh.position.clone(); // new THREE.Vector3();
+
+        var quaternion = mesh.parent.quaternion.clone();
+        mesh.parent.localToWorld(position);
+        target.worldToLocal(position);
+        mesh.parent.remove(mesh);
+        mesh.position.set(0, 0, 0);
+        mesh.quaternion.premultiply(quaternion);
+        mesh.position.set(position.x, position.y, position.z);
+        target.add(mesh);
+        mesh.unfreeze();
+        mesh.falling = true;
+        TweenMax.to(controller.material, 0.4, {
+          opacity: 1.0,
+          ease: Power2.easeInOut
+        });
+      });
+
+      var onReset = function onReset() {
+        mesh.parent.remove(mesh);
+        mesh.falling = false;
+        setTimeout(function () {
+          mesh.position.set(0, (0, _const.cm)(117), (0, _const.cm)(-60));
+          mesh.rotation.set(0, 0, 0);
+
+          _this3.scene.add(mesh);
+        }, 1000);
+      };
+
+      var onFallDown = function onFallDown() {
+        if (mesh.falling) {
+          var speed = mesh.userData.speed || (0, _const.mm)(0.1);
+          var tx = mesh.position.x;
+          var ty = mesh.position.y;
+          var tz = mesh.position.z;
+          var rx = mesh.rotation.x;
+          var ry = mesh.rotation.y;
+          var rz = mesh.rotation.z;
+          ty -= speed;
+          rx += (0 - rx) / 1000 * speed;
+          ry += (0 - ry) / 1000 * speed;
+          rz += (0, _const.deg)(0.05) * speed;
+          mesh.position.set(tx, ty, tz);
+          mesh.rotation.set(rx, ry, rz);
+          mesh.userData.speed = speed * 1.1;
+
+          if (ty < (0, _const.cm)(-30)) {
+            onReset();
+          }
+        }
+      };
+
+      var box;
+
+      if (_const.BOUNDING_BOX) {
+        box = new THREE.BoxHelper(mesh, 0x0000ff);
+        this.scene.add(box);
+      }
+
+      mesh.onUpdate = function (renderer, scene, camera, object, delta, time, tick) {
+        if (box && !mesh.freezed) {
+          box.update();
+        }
+
+        onFallDown();
+      };
+
+      return mesh;
+    }
+  }, {
+    key: "addToothBrush__",
+    value: function addToothBrush__() {
+      var _this4 = this;
+
       // const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-11.png');
       var geometry = new _roundBox.default((0, _const.cm)(18), (0, _const.mm)(6), (0, _const.cm)(1), (0, _const.mm)(3), 1, 1, 1, 3);
@@ -3168,7 +3574,7 @@ function () {
         // console.log(target.name);
       });
       mesh.on('release', function (controller) {
-        var target = _this3.scene; // target.updateMatrixWorld();
+        var target = _this4.scene; // target.updateMatrixWorld();
         // mesh.parent.updateMatrixWorld();
 
         var position = mesh.position.clone(); // new THREE.Vector3();
@@ -3209,7 +3615,7 @@ function () {
           mesh.position.set(0, (0, _const.cm)(117), (0, _const.cm)(-60));
           mesh.rotation.set(0, 0, 0);
 
-          _this3.scene.add(mesh); // console.log('onReset.scened');
+          _this4.scene.add(mesh); // console.log('onReset.scened');
 
         }, 1000); // console.log('onReset');
       };
@@ -3349,6 +3755,8 @@ function () {
             }
             */
           }
+
+          _grabbable.default.grabtest(controllers);
         }
       } catch (error) {
         this.debugInfo.innerHTML = error;
@@ -3364,6 +3772,8 @@ function () {
         var renderer = this.renderer;
         var scene = this.scene;
         var camera = this.camera;
+
+        _freezable2.default.update(renderer, scene, camera, delta, time, tick);
 
         _freezable.default.update(renderer, scene, camera, delta, time, tick);
 
@@ -3385,11 +3795,11 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this4 = this;
+      var _this5 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this4.render();
+        _this5.render();
       });
     }
   }]);
@@ -3400,5 +3810,5 @@ function () {
 var instance = new Vrui();
 instance.animate();
 
-},{"./const":1,"./geometries/round-box.geometry":2,"./interactive/freezable.mesh":7,"./interactive/interactive.mesh":8,"./vr/controllers":13,"./vr/gamepads":14,"./vr/vr":15}]},{},[16]);
+},{"./const":1,"./geometries/round-box.geometry":2,"./interactive/freezable.group":6,"./interactive/freezable.mesh":7,"./interactive/grabbable.group":8,"./interactive/interactive.mesh":9,"./vr/controllers":14,"./vr/gamepads":15,"./vr/vr":16}]},{},[17]);
 //# sourceMappingURL=vrui.js.map

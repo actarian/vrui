@@ -1,7 +1,14 @@
 /* jshint esversion: 6 */
 
-
 export default class FreezableGroup extends THREE.Group {
+
+	static update(renderer, scene, camera, delta, time, tick) {
+		FreezableGroup.items.forEach(x => {
+			if (x.parent) {
+				x.onUpdate(renderer, scene, camera, x, delta, time, tick);
+			}
+		});
+	}
 
 	get freezed() {
 		return this.freezed_;
@@ -16,6 +23,7 @@ export default class FreezableGroup extends THREE.Group {
 	constructor() {
 		super();
 		this.freezed = false;
+		FreezableGroup.items.push(this);
 	}
 
 	freeze() {
@@ -26,4 +34,10 @@ export default class FreezableGroup extends THREE.Group {
 		this.freezed = false;
 	}
 
+	onUpdate(renderer, scene, camera, object, delta, tick) {
+		// noop
+	}
+
 }
+
+FreezableGroup.items = [];
