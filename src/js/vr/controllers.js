@@ -71,7 +71,11 @@ export default class Controllers extends Emittable {
 
 	update() {
 		this.gamepads.update(this.tick);
-		Object.keys(this.controllers_).forEach(x => this.controllers_[x].update(this.tick));
+		Object.keys(this.controllers_).forEach(x => {
+			const controller = this.controllers_[x];
+			controller.update(this.tick);
+			controller.updateVelocity();
+		});
 		this.tick++;
 	}
 
@@ -205,6 +209,22 @@ export default class Controllers extends Emittable {
 		}
 	}
 
+	updateTest(mouse) {
+		const controller = this.controller;
+		if (controller) {
+			controller.parent.rotation.y = -mouse.x * Math.PI;
+			controller.parent.rotation.x = mouse.y * Math.PI / 2;
+			/*
+			controller.parent.position.x = mouse.x * cm(10);
+			controller.parent.position.y = cm(147) + mouse.y * cm(100);
+			*/
+		}
+		const box = this.box;
+		if (box) {
+			box.update();
+		}
+	}
+
 	onMouseDown(event) {
 		const controller = this.controller;
 		if (controller) {
@@ -229,18 +249,6 @@ export default class Controllers extends Emittable {
 		this.mouse.x = (event.clientX - w2) / w2;
 		this.mouse.y = -(event.clientY - h2) / h2;
 		this.updateTest(this.mouse);
-	}
-
-	updateTest(mouse) {
-		const controller = this.controller;
-		if (controller) {
-			controller.parent.rotation.y = -mouse.x * Math.PI;
-			controller.parent.rotation.x = mouse.y * Math.PI / 2;
-		}
-		const box = this.box;
-		if (box) {
-			box.update();
-		}
 	}
 
 	log(message, object) {

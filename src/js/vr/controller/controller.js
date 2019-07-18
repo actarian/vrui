@@ -41,6 +41,8 @@ export default class Controller extends EmittableGroup {
 			return { value: 0 };
 		});
 		this.axis = new Array(2).fill(0).map(x => new THREE.Vector2());
+		this.linearVelocity = new THREE.Vector3();
+		this.angularVelocity = new THREE.Vector3();
 		this.boundingBox = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
 		this.box = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
 		this.parent = parent;
@@ -60,6 +62,23 @@ export default class Controller extends EmittableGroup {
 		this.box.copy(this.boundingBox).applyMatrix4(this.parent.matrixWorld);
 		// console.log('updateBoundingBox', this.box);
 		return this.box;
+	}
+
+	updateVelocity() {
+		let previousPosition = this.previousPosition_;
+		if (previousPosition) {
+			this.linearVelocity.subVectors(this.parent.position, previousPosition);
+		} else {
+			previousPosition = this.previousPosition_ = new THREE.Vector3();
+		}
+		previousPosition.copy(this.parent.position);
+		let previousRotation = this.previousRotation_;
+		if (previousRotation) {
+			this.angularVelocity.subVectors(this.parent.rotation, previousRotation);
+		} else {
+			previousRotation = this.previousRotation_ = new THREE.Vector3();
+		}
+		previousRotation.copy(this.parent.rotation);
 	}
 
 	addEvents() {

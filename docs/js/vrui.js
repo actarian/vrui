@@ -1046,6 +1046,8 @@ function (_EmittableGroup) {
     _this.axis = new Array(2).fill(0).map(function (x) {
       return new THREE.Vector2();
     });
+    _this.linearVelocity = new THREE.Vector3();
+    _this.angularVelocity = new THREE.Vector3();
     _this.boundingBox = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
     _this.box = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
     _this.parent = parent;
@@ -1074,6 +1076,28 @@ function (_EmittableGroup) {
       this.box.copy(this.boundingBox).applyMatrix4(this.parent.matrixWorld); // console.log('updateBoundingBox', this.box);
 
       return this.box;
+    }
+  }, {
+    key: "updateVelocity",
+    value: function updateVelocity() {
+      var previousPosition = this.previousPosition_;
+
+      if (previousPosition) {
+        this.linearVelocity.subVectors(this.parent.position, previousPosition);
+      } else {
+        previousPosition = this.previousPosition_ = new THREE.Vector3();
+      }
+
+      previousPosition.copy(this.parent.position);
+      var previousRotation = this.previousRotation_;
+
+      if (previousRotation) {
+        this.angularVelocity.subVectors(this.parent.rotation, previousRotation);
+      } else {
+        previousRotation = this.previousRotation_ = new THREE.Vector3();
+      }
+
+      previousRotation.copy(this.parent.rotation);
     }
   }, {
     key: "addEvents",
@@ -1741,7 +1765,9 @@ function (_Emittable) {
 
       this.gamepads.update(this.tick);
       Object.keys(this.controllers_).forEach(function (x) {
-        return _this2.controllers_[x].update(_this2.tick);
+        var controller = _this2.controllers_[x];
+        controller.update(_this2.tick);
+        controller.updateVelocity();
       });
       this.tick++;
     }
@@ -1915,6 +1941,26 @@ function (_Emittable) {
       }
     }
   }, {
+    key: "updateTest",
+    value: function updateTest(mouse) {
+      var controller = this.controller;
+
+      if (controller) {
+        controller.parent.rotation.y = -mouse.x * Math.PI;
+        controller.parent.rotation.x = mouse.y * Math.PI / 2;
+        /*
+        controller.parent.position.x = mouse.x * cm(10);
+        controller.parent.position.y = cm(147) + mouse.y * cm(100);
+        */
+      }
+
+      var box = this.box;
+
+      if (box) {
+        box.update();
+      }
+    }
+  }, {
     key: "onMouseDown",
     value: function onMouseDown(event) {
       var controller = this.controller;
@@ -1944,22 +1990,6 @@ function (_Emittable) {
       this.mouse.x = (event.clientX - w2) / w2;
       this.mouse.y = -(event.clientY - h2) / h2;
       this.updateTest(this.mouse);
-    }
-  }, {
-    key: "updateTest",
-    value: function updateTest(mouse) {
-      var controller = this.controller;
-
-      if (controller) {
-        controller.parent.rotation.y = -mouse.x * Math.PI;
-        controller.parent.rotation.x = mouse.y * Math.PI / 2;
-      }
-
-      var box = this.box;
-
-      if (box) {
-        box.update();
-      }
     }
   }, {
     key: "log",
@@ -2901,27 +2931,173 @@ function () {
     scene.add(bg);
     */
 
-    var banner = this.banner = this.addBanner();
-    scene.add(banner);
-
-    if (_const.TRIGGER_CUBES) {
-      var cube0 = this.cube0 = this.addRoundedCube(0);
-      scene.add(cube0);
-      var cube1 = this.cube1 = this.addRoundedCube(1);
-      scene.add(cube1);
-    }
-
-    var stand = this.stand = this.addStand();
-    scene.add(stand);
-    var toothbrush = this.toothbrush = this.addToothBrush();
-    scene.add(toothbrush);
     var controllers = this.controllers = this.addControllers(renderer, vr, scene);
     this.addListeners();
     this.onWindowResize = this.onWindowResize.bind(this);
-    window.addEventListener('resize', this.onWindowResize, false);
+    window.addEventListener('resize', this.onWindowResize, false); // Ammo().then(() => {
+
+    var world = this.world = this.addWorld();
+    this.addMeshes(); // });
   }
 
   _createClass(Vrui, [{
+    key: "addMeshes",
+    value: function addMeshes() {
+      var scene = this.scene;
+      var banner = this.banner = this.addBanner();
+      scene.add(banner);
+
+      if (_const.TRIGGER_CUBES) {
+        var cube0 = this.cube0 = this.addRoundedCube(0);
+        scene.add(cube0);
+        var cube1 = this.cube1 = this.addRoundedCube(1);
+        scene.add(cube1);
+      }
+
+      var stand = this.stand = this.addStand();
+      scene.add(stand);
+      var toothbrush = this.toothbrush = this.addToothBrush();
+      scene.add(toothbrush);
+    }
+  }, {
+    key: "addWorld",
+    value: function addWorld() {
+      this.bodies = [];
+      this.linearVelocity = new Ammo.btVector3(0, 0, 0);
+      this.angularVelocity = new Ammo.btVector3(0, 0, 0);
+      var transform = this.transform = new Ammo.btTransform();
+      var collisionConfiguration = new Ammo.btDefaultCollisionConfiguration(),
+          dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration),
+          overlappingPairCache = new Ammo.btDbvtBroadphase(),
+          solver = new Ammo.btSequentialImpulseConstraintSolver();
+      var world = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+      world.setGravity(new Ammo.btVector3(0, -1, 0));
+      return world;
+    }
+  }, {
+    key: "updateWorld",
+    value: function updateWorld(delta) {
+      if (this.world) {
+        var transform = this.transform;
+        this.world.stepSimulation(delta, 10);
+
+        for (var i = 0; i < this.bodies.length; i++) {
+          var mesh = this.bodies[i];
+
+          if (!mesh.freezed) {
+            var body = mesh.userData.body;
+            var state = body.getMotionState();
+
+            if (state) {
+              state.getWorldTransform(transform);
+              var p = transform.getOrigin();
+              var q = transform.getRotation();
+              mesh.position.set(p.x(), p.y(), p.z());
+              mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
+              mesh.userData.respawn();
+            }
+          }
+        }
+      }
+    }
+  }, {
+    key: "updateVelocity",
+    value: function updateVelocity(controller) {
+      if (this.world && controller) {
+        this.linearVelocity.setX(controller.linearVelocity.x * 10);
+        this.linearVelocity.setY(controller.linearVelocity.y * 10);
+        this.linearVelocity.setZ(controller.linearVelocity.z * 10);
+        this.angularVelocity.setX(controller.angularVelocity.x * 10);
+        this.angularVelocity.setY(controller.angularVelocity.y * 10);
+        this.angularVelocity.setZ(controller.angularVelocity.z * 10);
+        console.log(controller.linearVelocity.x, controller.linearVelocity.y, controller.angularVelocity.x, controller.angularVelocity.y);
+      }
+    }
+  }, {
+    key: "removeBody",
+    value: function removeBody(mesh) {
+      var index = this.bodies.indexOf(mesh);
+
+      if (index !== -1) {
+        this.bodies.splice(index, 1);
+        var body = mesh.userData.body;
+
+        if (body) {
+          this.world.removeRigidBody(body);
+        }
+      }
+    }
+  }, {
+    key: "addRigidBox",
+    value: function addRigidBox(mesh, size) {
+      var mass = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+      var linearVelocity = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
+      var angularVelocity = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : null;
+
+      if (this.world) {
+        var position = mesh.position;
+        var quaternion = mesh.quaternion;
+        var transform = new Ammo.btTransform();
+        transform.setIdentity();
+        transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
+        transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+        var state = new Ammo.btDefaultMotionState(transform);
+        var box = new Ammo.btBoxShape(new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5));
+        box.setMargin(0.05);
+        var inertia = new Ammo.btVector3(0, 0, 0);
+        box.calculateLocalInertia(mass, inertia);
+        var info = new Ammo.btRigidBodyConstructionInfo(mass, state, box, inertia);
+        var body = new Ammo.btRigidBody(info);
+
+        if (linearVelocity) {
+          body.setLinearVelocity(linearVelocity);
+        }
+
+        if (angularVelocity) {
+          body.setAngularVelocity(angularVelocity);
+        }
+
+        this.world.addRigidBody(body);
+        mesh.userData.body = body;
+        return body;
+      }
+    }
+  }, {
+    key: "addRigidSphere",
+    value: function addRigidSphere(mesh, radius) {
+      var mass = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1;
+      var linearVelocity = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
+      var angularVelocity = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : null;
+
+      if (this.world) {
+        var position = mesh.position;
+        var quaternion = mesh.quaternion;
+        var transform = new Ammo.btTransform();
+        transform.setIdentity();
+        transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
+        transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+        var state = new Ammo.btDefaultMotionState(transform);
+        var sphere = new Ammo.btSphereShape(radius);
+        sphere.setMargin(0.05);
+        var inertia = new Ammo.btVector3(0, 0, 0);
+        sphere.calculateLocalInertia(mass, inertia);
+        var info = new Ammo.btRigidBodyConstructionInfo(mass, state, sphere, inertia);
+        var body = new Ammo.btRigidBody(info);
+
+        if (linearVelocity) {
+          body.setLinearVelocity(linearVelocity);
+        }
+
+        if (angularVelocity) {
+          body.setAngularVelocity(angularVelocity);
+        }
+
+        this.world.addRigidBody(body);
+        mesh.userData.body = body;
+        return body;
+      }
+    }
+  }, {
     key: "addListeners",
     value: function addListeners() {
       if (this.vr.mode === _vr.VR_MODE.NONE) {
@@ -2981,7 +3157,7 @@ function () {
       camera.onBeforeRender = function (renderer, scene) {
         if (_this2.vr.mode === _vr.VR_MODE.NONE) {
           // camera.position.z = Math.cos(this.tick * 0.1) * 1;
-          camera.target.set(_this2.mouse.x * (0, _const.cm)(40), (0, _const.cm)(156) + _this2.mouse.y * (0, _const.cm)(10), -(0, _const.cm)(60) + _this2.mouse.y * (0, _const.cm)(10));
+          camera.target.set(_this2.mouse.x * (0, _const.cm)(40), (0, _const.cm)(156) + _this2.mouse.y * (0, _const.cm)(20), -(0, _const.cm)(60) + _this2.mouse.y * (0, _const.cm)(20));
           camera.lookAt(camera.target);
         }
       };
@@ -3328,10 +3504,12 @@ function () {
         roughness: 0.2,
         metalness: 0.2
       });
-      var geometry = new _roundBox.default((0, _const.cm)(40), (0, _const.mm)(10), (0, _const.cm)(20), (0, _const.mm)(5), 1, 1, 1, 5);
-      var group = new THREE.Mesh(geometry, material);
-      group.position.set(0, (0, _const.cm)(116), (0, _const.cm)(-60));
-      return group;
+      var size = new THREE.Vector3((0, _const.cm)(40), (0, _const.mm)(10), (0, _const.cm)(20));
+      var geometry = new _roundBox.default(size.x, size.y, size.z, (0, _const.mm)(5), 1, 1, 1, 5);
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(0, (0, _const.cm)(116), (0, _const.cm)(-60));
+      this.addRigidBox(mesh, size);
+      return mesh;
     }
   }, {
     key: "addStand__",
@@ -3385,6 +3563,9 @@ function () {
       var _this3 = this;
 
       var mesh = new _grabbable.default();
+      mesh.defaultY = this.stand.position.y + (0, _const.cm)(50);
+      mesh.position.set(0, mesh.defaultY, (0, _const.cm)(-60));
+      mesh.rotation.set(0, 0, (0, _const.deg)(10));
       var loader = new THREE.FBXLoader(); // new THREE.OBJLoader();
 
       loader.load("models/toothbrush/professional-27.fbx", function (object) {
@@ -3423,13 +3604,28 @@ function () {
           }
         });
         mesh.add(object);
+
+        if (_this3.world) {
+          var _box = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
+
+          _box.setFromObject(object);
+
+          var size = _box.getSize(new THREE.Vector3());
+
+          mesh.userData.size = size;
+
+          _this3.addRigidBox(mesh, size, 1);
+
+          _this3.bodies.push(mesh);
+        }
       }, function (xhr) {// console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
       }, function (error) {
         console.log('An error happened');
       });
-      mesh.position.set(0, (0, _const.cm)(117), (0, _const.cm)(-60));
       mesh.name = 'toothbrush';
       mesh.on('grab', function (controller) {
+        _this3.removeBody(mesh);
+
         mesh.userData.speed = 0;
         mesh.falling = false;
         mesh.freeze();
@@ -3467,18 +3663,48 @@ function () {
         mesh.position.set(position.x, position.y, position.z);
         target.add(mesh);
         mesh.unfreeze();
-        mesh.falling = true;
         TweenMax.to(controller.material, 0.4, {
           opacity: 1.0,
           ease: Power2.easeInOut
         });
+
+        if (_this3.world) {
+          _this3.addRigidBox(mesh, mesh.userData.size, 1, _this3.linearVelocity, _this3.angularVelocity);
+
+          _this3.bodies.push(mesh);
+          /*
+          body.setCollisionFlags(1); // 0 is static 1 dynamic 2 kinematic and state to 4:
+          body.setActivationState(1); // never sleep
+          */
+
+        } else {
+          mesh.falling = true;
+        }
       });
 
-      var onReset = function onReset() {
+      mesh.userData.respawn = function () {
+        if (mesh.position.y < (0, _const.cm)(-100)) {
+          _this3.removeBody(mesh);
+
+          mesh.parent.remove(mesh);
+          setTimeout(function () {
+            mesh.position.set(0, mesh.defaultY, (0, _const.cm)(-60));
+            mesh.rotation.set(0, 0, (0, _const.deg)(10));
+
+            _this3.scene.add(mesh);
+
+            _this3.addRigidBox(mesh, mesh.userData.size, 1);
+
+            _this3.bodies.push(mesh);
+          }, 1000);
+        }
+      };
+
+      var onRespawn = function onRespawn() {
         mesh.parent.remove(mesh);
         mesh.falling = false;
         setTimeout(function () {
-          mesh.position.set(0, (0, _const.cm)(117), (0, _const.cm)(-60));
+          mesh.position.set(0, mesh.defaultY, (0, _const.cm)(-60));
           mesh.rotation.set(0, 0, 0);
 
           _this3.scene.add(mesh);
@@ -3503,7 +3729,7 @@ function () {
           mesh.userData.speed = speed * 1.1;
 
           if (ty < (0, _const.cm)(-30)) {
-            onReset();
+            onRespawn();
           }
         }
       };
@@ -3609,16 +3835,16 @@ function () {
       };
       */
 
-      var onReset = function onReset() {
+      var onRespawn = function onRespawn() {
         mesh.parent.remove(mesh);
         mesh.falling = false;
         setTimeout(function () {
           mesh.position.set(0, (0, _const.cm)(117), (0, _const.cm)(-60));
           mesh.rotation.set(0, 0, 0);
 
-          _this4.scene.add(mesh); // console.log('onReset.scened');
+          _this4.scene.add(mesh); // console.log('onRespawn.scened');
 
-        }, 1000); // console.log('onReset');
+        }, 1000); // console.log('onRespawn');
       };
 
       var onFallDown = function onFallDown() {
@@ -3639,7 +3865,7 @@ function () {
           mesh.userData.speed = speed * 1.1;
 
           if (ty < (0, _const.cm)(-30)) {
-            onReset();
+            onRespawn();
           }
         }
       };
@@ -3664,6 +3890,7 @@ function () {
   }, {
     key: "checkCameraPosition",
     value: function checkCameraPosition() {
+      return false;
       var tick = this.tick;
       var camera = this.camera;
       var controllers = this.controllers;
@@ -3673,7 +3900,8 @@ function () {
 
       if (y < 1.2 && stand.position.y === (0, _const.cm)(116)) {
         stand.position.y = y - (0, _const.cm)(40);
-        toothbrush.position.y = y - (0, _const.cm)(39);
+        toothbrush.defaultY = stand.position.y + (0, _const.cm)(50);
+        toothbrush.position.y = toothbrush.defaultY;
       }
 
       if (tick % 120 === 0 && controllers) {
@@ -3759,6 +3987,8 @@ function () {
 
           _grabbable.default.grabtest(controllers);
         }
+
+        this.updateVelocity(controllers.controller);
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -3770,6 +4000,7 @@ function () {
         var delta = this.clock.getDelta();
         var time = this.clock.getElapsedTime();
         var tick = Math.floor(time * 60);
+        this.updateWorld(delta);
         var renderer = this.renderer;
         var scene = this.scene;
         var camera = this.camera;

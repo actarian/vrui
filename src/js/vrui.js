@@ -2,6 +2,7 @@
 
 // import * as THREE from 'three';
 // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+// import * as Ammo from 'ammo.js';
 
 import { BOUNDING_BOX, cm, deg, mm, TEST_ENABLED, TRIGGER_CUBES } from './const';
 import RoundBoxGeometry from './geometries/round-box.geometry';
@@ -60,23 +61,6 @@ class Vrui {
 		scene.add(bg);
 		*/
 
-		const banner = this.banner = this.addBanner();
-		scene.add(banner);
-
-		if (TRIGGER_CUBES) {
-			const cube0 = this.cube0 = this.addRoundedCube(0);
-			scene.add(cube0);
-
-			const cube1 = this.cube1 = this.addRoundedCube(1);
-			scene.add(cube1);
-		}
-
-		const stand = this.stand = this.addStand();
-		scene.add(stand);
-
-		const toothbrush = this.toothbrush = this.addToothBrush();
-		scene.add(toothbrush);
-
 		const controllers = this.controllers = this.addControllers(renderer, vr, scene);
 
 		this.addListeners();
@@ -84,6 +68,140 @@ class Vrui {
 		this.onWindowResize = this.onWindowResize.bind(this);
 		window.addEventListener('resize', this.onWindowResize, false);
 
+		// Ammo().then(() => {
+		const world = this.world = this.addWorld();
+		this.addMeshes();
+		// });
+
+	}
+
+	addMeshes() {
+		const scene = this.scene;
+		const banner = this.banner = this.addBanner();
+		scene.add(banner);
+		if (TRIGGER_CUBES) {
+			const cube0 = this.cube0 = this.addRoundedCube(0);
+			scene.add(cube0);
+			const cube1 = this.cube1 = this.addRoundedCube(1);
+			scene.add(cube1);
+		}
+		const stand = this.stand = this.addStand();
+		scene.add(stand);
+		const toothbrush = this.toothbrush = this.addToothBrush();
+		scene.add(toothbrush);
+	}
+
+	addWorld() {
+		this.bodies = [];
+		this.linearVelocity = new Ammo.btVector3(0, 0, 0);
+		this.angularVelocity = new Ammo.btVector3(0, 0, 0);
+		const transform = this.transform = new Ammo.btTransform();
+		const collisionConfiguration = new Ammo.btDefaultCollisionConfiguration(),
+			dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration),
+			overlappingPairCache = new Ammo.btDbvtBroadphase(),
+			solver = new Ammo.btSequentialImpulseConstraintSolver();
+		const world = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+		world.setGravity(new Ammo.btVector3(0, -1, 0));
+		return world;
+	}
+
+	updateWorld(delta) {
+		if (this.world) {
+			const transform = this.transform;
+			this.world.stepSimulation(delta, 10);
+			for (let i = 0; i < this.bodies.length; i++) {
+				const mesh = this.bodies[i];
+				if (!mesh.freezed) {
+					const body = mesh.userData.body;
+					const state = body.getMotionState();
+					if (state) {
+						state.getWorldTransform(transform);
+						const p = transform.getOrigin();
+						const q = transform.getRotation();
+						mesh.position.set(p.x(), p.y(), p.z());
+						mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
+						mesh.userData.respawn();
+					}
+				}
+			}
+		}
+	}
+
+	updateVelocity(controller) {
+		if (this.world && controller) {
+			this.linearVelocity.setX(controller.linearVelocity.x * 10);
+			this.linearVelocity.setY(controller.linearVelocity.y * 10);
+			this.linearVelocity.setZ(controller.linearVelocity.z * 10);
+			this.angularVelocity.setX(controller.angularVelocity.x * 10);
+			this.angularVelocity.setY(controller.angularVelocity.y * 10);
+			this.angularVelocity.setZ(controller.angularVelocity.z * 10);
+			console.log(controller.linearVelocity.x, controller.linearVelocity.y, controller.angularVelocity.x, controller.angularVelocity.y);
+		}
+	}
+
+	removeBody(mesh) {
+		const index = this.bodies.indexOf(mesh);
+		if (index !== -1) {
+			this.bodies.splice(index, 1);
+			const body = mesh.userData.body;
+			if (body) {
+				this.world.removeRigidBody(body);
+			}
+		}
+	}
+
+	addRigidBox(mesh, size, mass = 0, linearVelocity = null, angularVelocity = null) {
+		if (this.world) {
+			const position = mesh.position;
+			const quaternion = mesh.quaternion;
+			const transform = new Ammo.btTransform();
+			transform.setIdentity();
+			transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
+			transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+			const state = new Ammo.btDefaultMotionState(transform);
+			const box = new Ammo.btBoxShape(new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5));
+			box.setMargin(0.05);
+			const inertia = new Ammo.btVector3(0, 0, 0);
+			box.calculateLocalInertia(mass, inertia);
+			const info = new Ammo.btRigidBodyConstructionInfo(mass, state, box, inertia);
+			const body = new Ammo.btRigidBody(info);
+			if (linearVelocity) {
+				body.setLinearVelocity(linearVelocity);
+			}
+			if (angularVelocity) {
+				body.setAngularVelocity(angularVelocity);
+			}
+			this.world.addRigidBody(body);
+			mesh.userData.body = body;
+			return body;
+		}
+	}
+
+	addRigidSphere(mesh, radius, mass = 1, linearVelocity = null, angularVelocity = null) {
+		if (this.world) {
+			const position = mesh.position;
+			const quaternion = mesh.quaternion;
+			const transform = new Ammo.btTransform();
+			transform.setIdentity();
+			transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
+			transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+			const state = new Ammo.btDefaultMotionState(transform);
+			const sphere = new Ammo.btSphereShape(radius);
+			sphere.setMargin(0.05);
+			const inertia = new Ammo.btVector3(0, 0, 0);
+			sphere.calculateLocalInertia(mass, inertia);
+			const info = new Ammo.btRigidBodyConstructionInfo(mass, state, sphere, inertia);
+			const body = new Ammo.btRigidBody(info);
+			if (linearVelocity) {
+				body.setLinearVelocity(linearVelocity);
+			}
+			if (angularVelocity) {
+				body.setAngularVelocity(angularVelocity);
+			}
+			this.world.addRigidBody(body);
+			mesh.userData.body = body;
+			return body;
+		}
 	}
 
 	addListeners() {
@@ -134,7 +252,7 @@ class Vrui {
 		camera.onBeforeRender = (renderer, scene) => {
 			if (this.vr.mode === VR_MODE.NONE) {
 				// camera.position.z = Math.cos(this.tick * 0.1) * 1;
-				camera.target.set(this.mouse.x * cm(40), cm(156) + this.mouse.y * cm(10), -cm(60) + this.mouse.y * cm(10));
+				camera.target.set(this.mouse.x * cm(40), cm(156) + this.mouse.y * cm(20), -cm(60) + this.mouse.y * cm(20));
 				camera.lookAt(camera.target);
 			}
 		};
@@ -453,10 +571,12 @@ class Vrui {
 			roughness: 0.2,
 			metalness: 0.2,
 		});
-		const geometry = new RoundBoxGeometry(cm(40), mm(10), cm(20), mm(5), 1, 1, 1, 5);
-		const group = new THREE.Mesh(geometry, material);
-		group.position.set(0, cm(116), cm(-60));
-		return group;
+		const size = new THREE.Vector3(cm(40), mm(10), cm(20));
+		const geometry = new RoundBoxGeometry(size.x, size.y, size.z, mm(5), 1, 1, 1, 5);
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.position.set(0, cm(116), cm(-60));
+		this.addRigidBox(mesh, size);
+		return mesh;
 	}
 
 	addStand__() {
@@ -504,6 +624,9 @@ class Vrui {
 
 	addToothBrush() {
 		const mesh = new GrabbableGroup();
+		mesh.defaultY = this.stand.position.y + cm(50);
+		mesh.position.set(0, mesh.defaultY, cm(-60));
+		mesh.rotation.set(0, 0, deg(10));
 		const loader = new THREE.FBXLoader(); // new THREE.OBJLoader();
 		loader.load(`models/toothbrush/professional-27.fbx`, (object) => {
 				object.traverse((child) => {
@@ -537,6 +660,14 @@ class Vrui {
 					}
 				});
 				mesh.add(object);
+				if (this.world) {
+					const box = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
+					box.setFromObject(object);
+					const size = box.getSize(new THREE.Vector3());
+					mesh.userData.size = size;
+					this.addRigidBox(mesh, size, 1);
+					this.bodies.push(mesh);
+				}
 			},
 			(xhr) => {
 				// console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
@@ -544,9 +675,9 @@ class Vrui {
 			(error) => {
 				console.log('An error happened');
 			});
-		mesh.position.set(0, cm(117), cm(-60));
 		mesh.name = 'toothbrush';
 		mesh.on('grab', (controller) => {
+			this.removeBody(mesh);
 			mesh.userData.speed = 0;
 			mesh.falling = false;
 			mesh.freeze();
@@ -581,17 +712,39 @@ class Vrui {
 			mesh.position.set(position.x, position.y, position.z);
 			target.add(mesh);
 			mesh.unfreeze();
-			mesh.falling = true;
 			TweenMax.to(controller.material, 0.4, {
 				opacity: 1.0,
 				ease: Power2.easeInOut
 			});
+			if (this.world) {
+				this.addRigidBox(mesh, mesh.userData.size, 1, this.linearVelocity, this.angularVelocity);
+				this.bodies.push(mesh);
+				/*
+				body.setCollisionFlags(1); // 0 is static 1 dynamic 2 kinematic and state to 4:
+				body.setActivationState(1); // never sleep
+				*/
+			} else {
+				mesh.falling = true;
+			}
 		});
-		const onReset = () => {
+		mesh.userData.respawn = () => {
+			if (mesh.position.y < cm(-100)) {
+				this.removeBody(mesh);
+				mesh.parent.remove(mesh);
+				setTimeout(() => {
+					mesh.position.set(0, mesh.defaultY, cm(-60));
+					mesh.rotation.set(0, 0, deg(10));
+					this.scene.add(mesh);
+					this.addRigidBox(mesh, mesh.userData.size, 1);
+					this.bodies.push(mesh);
+				}, 1000);
+			}
+		};
+		const onRespawn = () => {
 			mesh.parent.remove(mesh);
 			mesh.falling = false;
 			setTimeout(() => {
-				mesh.position.set(0, cm(117), cm(-60));
+				mesh.position.set(0, mesh.defaultY, cm(-60));
 				mesh.rotation.set(0, 0, 0);
 				this.scene.add(mesh);
 			}, 1000);
@@ -613,7 +766,7 @@ class Vrui {
 				mesh.rotation.set(rx, ry, rz);
 				mesh.userData.speed = speed * 1.1;
 				if (ty < cm(-30)) {
-					onReset();
+					onRespawn();
 				}
 			}
 		};
@@ -712,16 +865,16 @@ class Vrui {
 			mesh.userData.rotation.x += (0.01 + 0.01 * index);
 		};
 		*/
-		const onReset = () => {
+		const onRespawn = () => {
 			mesh.parent.remove(mesh);
 			mesh.falling = false;
 			setTimeout(() => {
 				mesh.position.set(0, cm(117), cm(-60));
 				mesh.rotation.set(0, 0, 0);
 				this.scene.add(mesh);
-				// console.log('onReset.scened');
+				// console.log('onRespawn.scened');
 			}, 1000);
-			// console.log('onReset');
+			// console.log('onRespawn');
 		};
 		const onFallDown = () => {
 			if (mesh.falling) {
@@ -740,7 +893,7 @@ class Vrui {
 				mesh.rotation.set(rx, ry, rz);
 				mesh.userData.speed = speed * 1.1;
 				if (ty < cm(-30)) {
-					onReset();
+					onRespawn();
 				}
 			}
 		};
@@ -759,6 +912,7 @@ class Vrui {
 	}
 
 	checkCameraPosition() {
+		return false;
 		const tick = this.tick;
 		const camera = this.camera;
 		const controllers = this.controllers;
@@ -767,7 +921,8 @@ class Vrui {
 		const y = camera.position.y;
 		if (y < 1.2 && stand.position.y === cm(116)) {
 			stand.position.y = y - cm(40);
-			toothbrush.position.y = y - cm(39);
+			toothbrush.defaultY = stand.position.y + cm(50);
+			toothbrush.position.y = toothbrush.defaultY;
 		}
 		if (tick % 120 === 0 && controllers) {
 			controllers.setText(`camera ${y.toFixed(3)}`);
@@ -845,6 +1000,7 @@ class Vrui {
 				}
 				GrabbableGroup.grabtest(controllers);
 			}
+			this.updateVelocity(controllers.controller);
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -855,6 +1011,7 @@ class Vrui {
 			const delta = this.clock.getDelta();
 			const time = this.clock.getElapsedTime();
 			const tick = Math.floor(time * 60);
+			this.updateWorld(delta);
 			const renderer = this.renderer;
 			const scene = this.scene;
 			const camera = this.camera;

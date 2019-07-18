@@ -22,7 +22,8 @@
 					"node_modules/three/examples/js/libs/inflate.min.js",
 					"node_modules/three/examples/js/loaders/EquirectangularToCubeGenerator.js",
 					"node_modules/three/examples/js/loaders/RGBELoader.js",
-					"node_modules/three/examples/js/utils/BufferGeometryUtils.js"
+					"node_modules/three/examples/js/utils/BufferGeometryUtils.js",
+					"node_modules/ammo.js/ammo.js"
 				],
 				"output": "docs/js/vrui-vendors.js",
 				"minify": true
