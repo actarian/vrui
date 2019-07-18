@@ -512,14 +512,14 @@ class Vrui {
 						switch (child.name) {
 							case 'body-primary':
 							case 'bubble':
-								child.geometry.computeFaceNormals();
-								child.geometry.computeVertexNormals(true);
+								// child.geometry.computeFaceNormals();
+								// child.geometry.computeVertexNormals(true);
 								child.material = this.materials.bodyPrimaryClear;
 								mesh.body = child;
 								break;
 							case 'body-secondary':
-								child.geometry.computeFaceNormals();
-								child.geometry.computeVertexNormals(true);
+								// child.geometry.computeFaceNormals();
+								// child.geometry.computeVertexNormals(true);
 								child.material = this.materials.bodySecondary;
 								mesh.color = child;
 								break;
