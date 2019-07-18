@@ -11,7 +11,7 @@ exports.addCube = addCube;
 exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TRIGGER_CUBES = exports.BOUNDING_BOX = exports.TEST_ENABLED = void 0;
 
 /* jshint esversion: 6 */
-var TEST_ENABLED = true;
+var TEST_ENABLED = false;
 exports.TEST_ENABLED = TEST_ENABLED;
 var BOUNDING_BOX = false;
 exports.BOUNDING_BOX = BOUNDING_BOX;
