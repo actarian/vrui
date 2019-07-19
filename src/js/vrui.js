@@ -36,7 +36,10 @@ class Vrui {
 		renderer.vr.enabled = true;
 		container.appendChild(renderer.domElement);
 
-		const vr = this.vr = new VR(renderer, { referenceSpaceType: 'local' }, (error) => {
+		const vr = this.vr = new VR(renderer, {
+			referenceSpaceType: 'local'
+		});
+		vr.on('error', (error) => {
 			this.debugInfo.innerHTML = error;
 		});
 		container.appendChild(vr.element);

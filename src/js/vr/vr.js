@@ -10,13 +10,10 @@ export const VR_MODE = {
 
 export class VR extends Emittable {
 
-	constructor(renderer, options, onError) {
+	constructor(renderer, options) {
 		super();
 		if (options && options.frameOfReferenceType) {
 			renderer.vr.setFrameOfReferenceType(options.frameOfReferenceType);
-		}
-		if (onError) {
-			this.on('error', onError);
 		}
 		this.renderer = renderer;
 		this.options = options;
@@ -180,8 +177,15 @@ export class VR extends Emittable {
 
 	onVRDisplayPresentChange(event) {
 		try {
-			this.element.textContent = event.display.isPresenting ? 'EXIT VR' : 'ENTER VR';
-			this.session = event.display.isPresenting;
+			const isPresenting = event.display.isPresenting;
+			this.session = isPresenting;
+			if (isPresenting) {
+				this.element.textContent = 'EXIT VR';
+				this.emit('presenting');
+			} else {
+				this.element.textContent = 'ENTER VR';
+				this.emit('exit');
+			}
 		} catch (error) {
 			this.emit('error', error);
 		}
@@ -255,8 +259,9 @@ export class VR extends Emittable {
 		try {
 			session.addEventListener('end', this.onXRSessionEnded);
 			this.renderer.vr.setSession(session);
-			this.element.textContent = 'EXIT VR';
 			this.session = session;
+			this.element.textContent = 'EXIT VR';
+			this.emit('presenting');
 		} catch (error) {
 			this.emit('error', error);
 		}
@@ -266,8 +271,9 @@ export class VR extends Emittable {
 		try {
 			this.session.removeEventListener('end', this.onXRSessionEnded);
 			this.renderer.vr.setSession(null);
-			this.element.textContent = 'ENTER VR';
 			this.session = null;
+			this.element.textContent = 'ENTER VR';
+			this.emit('exit');
 		} catch (error) {
 			this.emit('error', error);
 		}
