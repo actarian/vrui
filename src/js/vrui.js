@@ -70,6 +70,7 @@ class Vrui {
 
 		// Ammo().then(() => {
 		const world = this.world = this.addWorld();
+		const floor = this.floor = this.addWorldFloor();
 		this.addMeshes();
 		// });
 
@@ -103,6 +104,13 @@ class Vrui {
 		const world = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
 		world.setGravity(new Ammo.btVector3(0, -1, 0));
 		return world;
+	}
+
+	addWorldFloor() {
+		const floor = new THREE.Group();
+		floor.position.y = cm(-20);
+		this.addRigidBox(floor, new THREE.Vector3(10, cm(40), 10));
+		return floor;
 	}
 
 	updateWorld(delta) {
@@ -700,7 +708,6 @@ class Vrui {
 			});
 		});
 		mesh.on('release', (controller) => {
-			console.log('release');
 			const target = this.scene;
 			const position = mesh.position.clone(); // new THREE.Vector3();
 			const quaternion = mesh.parent.quaternion.clone();
@@ -728,16 +735,19 @@ class Vrui {
 			}
 		});
 		mesh.userData.respawn = () => {
-			if (mesh.position.y < cm(-100)) {
-				this.removeBody(mesh);
-				mesh.parent.remove(mesh);
-				setTimeout(() => {
-					mesh.position.set(0, mesh.defaultY, cm(-60));
-					mesh.rotation.set(0, 0, deg(10));
-					this.scene.add(mesh);
-					this.addRigidBox(mesh, mesh.userData.size, 1);
-					this.bodies.push(mesh);
-				}, 1000);
+			if (mesh.position.y < cm(10)) {
+				const linearVelocity = mesh.userData.body.getLinearVelocity();
+				if (linearVelocity.length() < 0.03) {
+					this.removeBody(mesh);
+					mesh.parent.remove(mesh);
+					setTimeout(() => {
+						mesh.position.set(0, mesh.defaultY, cm(-60));
+						mesh.rotation.set(0, 0, deg(10));
+						this.scene.add(mesh);
+						this.addRigidBox(mesh, mesh.userData.size, 1);
+						this.bodies.push(mesh);
+					}, 1000);
+				}
 			}
 		};
 		const onRespawn = () => {

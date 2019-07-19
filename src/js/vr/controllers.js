@@ -214,10 +214,8 @@ export default class Controllers extends Emittable {
 		if (controller) {
 			controller.parent.rotation.y = -mouse.x * Math.PI;
 			controller.parent.rotation.x = mouse.y * Math.PI / 2;
-			/*
 			controller.parent.position.x = mouse.x * cm(10);
 			controller.parent.position.y = cm(147) + mouse.y * cm(100);
-			*/
 		}
 		const box = this.box;
 		if (box) {

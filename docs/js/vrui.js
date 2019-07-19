@@ -1948,10 +1948,8 @@ function (_Emittable) {
       if (controller) {
         controller.parent.rotation.y = -mouse.x * Math.PI;
         controller.parent.rotation.x = mouse.y * Math.PI / 2;
-        /*
-        controller.parent.position.x = mouse.x * cm(10);
-        controller.parent.position.y = cm(147) + mouse.y * cm(100);
-        */
+        controller.parent.position.x = mouse.x * (0, _const.cm)(10);
+        controller.parent.position.y = (0, _const.cm)(147) + mouse.y * (0, _const.cm)(100);
       }
 
       var box = this.box;
@@ -2937,6 +2935,7 @@ function () {
     window.addEventListener('resize', this.onWindowResize, false); // Ammo().then(() => {
 
     var world = this.world = this.addWorld();
+    var floor = this.floor = this.addWorldFloor();
     this.addMeshes(); // });
   }
 
@@ -2973,6 +2972,14 @@ function () {
       var world = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
       world.setGravity(new Ammo.btVector3(0, -1, 0));
       return world;
+    }
+  }, {
+    key: "addWorldFloor",
+    value: function addWorldFloor() {
+      var floor = new THREE.Group();
+      floor.position.y = (0, _const.cm)(-20);
+      this.addRigidBox(floor, new THREE.Vector3(10, (0, _const.cm)(40), 10));
+      return floor;
     }
   }, {
     key: "updateWorld",
@@ -3650,7 +3657,6 @@ function () {
         });
       });
       mesh.on('release', function (controller) {
-        console.log('release');
         var target = _this3.scene;
         var position = mesh.position.clone(); // new THREE.Vector3();
 
@@ -3683,20 +3689,24 @@ function () {
       });
 
       mesh.userData.respawn = function () {
-        if (mesh.position.y < (0, _const.cm)(-100)) {
-          _this3.removeBody(mesh);
+        if (mesh.position.y < (0, _const.cm)(10)) {
+          var linearVelocity = mesh.userData.body.getLinearVelocity();
 
-          mesh.parent.remove(mesh);
-          setTimeout(function () {
-            mesh.position.set(0, mesh.defaultY, (0, _const.cm)(-60));
-            mesh.rotation.set(0, 0, (0, _const.deg)(10));
+          if (linearVelocity.length() < 0.03) {
+            _this3.removeBody(mesh);
 
-            _this3.scene.add(mesh);
+            mesh.parent.remove(mesh);
+            setTimeout(function () {
+              mesh.position.set(0, mesh.defaultY, (0, _const.cm)(-60));
+              mesh.rotation.set(0, 0, (0, _const.deg)(10));
 
-            _this3.addRigidBox(mesh, mesh.userData.size, 1);
+              _this3.scene.add(mesh);
 
-            _this3.bodies.push(mesh);
-          }, 1000);
+              _this3.addRigidBox(mesh, mesh.userData.size, 1);
+
+              _this3.bodies.push(mesh);
+            }, 1000);
+          }
         }
       };
 
