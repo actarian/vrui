@@ -10,6 +10,7 @@ import FreezableGroup from './interactive/freezable.group';
 import FreezableMesh from './interactive/freezable.mesh';
 import GrabbableGroup from './interactive/grabbable.group';
 import InteractiveMesh from './interactive/interactive.mesh';
+import Physics from './physics/physics';
 import Controllers from './vr/controllers';
 import { GAMEPAD_HANDS } from './vr/gamepads';
 import { VR, VR_MODE } from './vr/vr';
@@ -71,11 +72,14 @@ class Vrui {
 		this.onWindowResize = this.onWindowResize.bind(this);
 		window.addEventListener('resize', this.onWindowResize, false);
 
-		// Ammo().then(() => {
-		const world = this.world = this.addWorld();
-		const floor = this.floor = this.addWorldFloor();
+		const physics = this.physics = new Physics();
+		/*
+		physics.on('init', () => {
+			console.log('init');
+			this.addMeshes();
+		});
+		*/
 		this.addMeshes();
-		// });
 
 	}
 
@@ -93,126 +97,6 @@ class Vrui {
 		scene.add(stand);
 		const toothbrush = this.toothbrush = this.addToothBrush();
 		scene.add(toothbrush);
-	}
-
-	addWorld() {
-		this.bodies = [];
-		this.linearVelocity = new Ammo.btVector3(0, 0, 0);
-		this.angularVelocity = new Ammo.btVector3(0, 0, 0);
-		const transform = this.transform = new Ammo.btTransform();
-		const collisionConfiguration = new Ammo.btDefaultCollisionConfiguration(),
-			dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration),
-			overlappingPairCache = new Ammo.btDbvtBroadphase(),
-			solver = new Ammo.btSequentialImpulseConstraintSolver();
-		const world = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
-		world.setGravity(new Ammo.btVector3(0, -1, 0));
-		return world;
-	}
-
-	addWorldFloor() {
-		const floor = new THREE.Group();
-		floor.position.y = cm(-20);
-		this.addRigidBox(floor, new THREE.Vector3(10, cm(40), 10));
-		return floor;
-	}
-
-	updateWorld(delta) {
-		if (this.world) {
-			const transform = this.transform;
-			this.world.stepSimulation(delta, 10);
-			for (let i = 0; i < this.bodies.length; i++) {
-				const mesh = this.bodies[i];
-				if (!mesh.freezed) {
-					const body = mesh.userData.body;
-					const state = body.getMotionState();
-					if (state) {
-						state.getWorldTransform(transform);
-						const p = transform.getOrigin();
-						const q = transform.getRotation();
-						mesh.position.set(p.x(), p.y(), p.z());
-						mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
-						mesh.userData.respawn();
-					}
-				}
-			}
-		}
-	}
-
-	updateVelocity(controller) {
-		if (this.world && controller) {
-			this.linearVelocity.setX(controller.linearVelocity.x * 10);
-			this.linearVelocity.setY(controller.linearVelocity.y * 10);
-			this.linearVelocity.setZ(controller.linearVelocity.z * 10);
-			this.angularVelocity.setX(controller.angularVelocity.x * 10);
-			this.angularVelocity.setY(controller.angularVelocity.y * 10);
-			this.angularVelocity.setZ(controller.angularVelocity.z * 10);
-			console.log(controller.linearVelocity.x, controller.linearVelocity.y, controller.angularVelocity.x, controller.angularVelocity.y);
-		}
-	}
-
-	removeBody(mesh) {
-		const index = this.bodies.indexOf(mesh);
-		if (index !== -1) {
-			this.bodies.splice(index, 1);
-			const body = mesh.userData.body;
-			if (body) {
-				this.world.removeRigidBody(body);
-			}
-		}
-	}
-
-	addRigidBox(mesh, size, mass = 0, linearVelocity = null, angularVelocity = null) {
-		if (this.world) {
-			const position = mesh.position;
-			const quaternion = mesh.quaternion;
-			const transform = new Ammo.btTransform();
-			transform.setIdentity();
-			transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
-			transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
-			const state = new Ammo.btDefaultMotionState(transform);
-			const box = new Ammo.btBoxShape(new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5));
-			box.setMargin(0.05);
-			const inertia = new Ammo.btVector3(0, 0, 0);
-			box.calculateLocalInertia(mass, inertia);
-			const info = new Ammo.btRigidBodyConstructionInfo(mass, state, box, inertia);
-			const body = new Ammo.btRigidBody(info);
-			if (linearVelocity) {
-				body.setLinearVelocity(linearVelocity);
-			}
-			if (angularVelocity) {
-				body.setAngularVelocity(angularVelocity);
-			}
-			this.world.addRigidBody(body);
-			mesh.userData.body = body;
-			return body;
-		}
-	}
-
-	addRigidSphere(mesh, radius, mass = 1, linearVelocity = null, angularVelocity = null) {
-		if (this.world) {
-			const position = mesh.position;
-			const quaternion = mesh.quaternion;
-			const transform = new Ammo.btTransform();
-			transform.setIdentity();
-			transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
-			transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
-			const state = new Ammo.btDefaultMotionState(transform);
-			const sphere = new Ammo.btSphereShape(radius);
-			sphere.setMargin(0.05);
-			const inertia = new Ammo.btVector3(0, 0, 0);
-			sphere.calculateLocalInertia(mass, inertia);
-			const info = new Ammo.btRigidBodyConstructionInfo(mass, state, sphere, inertia);
-			const body = new Ammo.btRigidBody(info);
-			if (linearVelocity) {
-				body.setLinearVelocity(linearVelocity);
-			}
-			if (angularVelocity) {
-				body.setAngularVelocity(angularVelocity);
-			}
-			this.world.addRigidBody(body);
-			mesh.userData.body = body;
-			return body;
-		}
 	}
 
 	addListeners() {
@@ -586,7 +470,9 @@ class Vrui {
 		const geometry = new RoundBoxGeometry(size.x, size.y, size.z, mm(5), 1, 1, 1, 5);
 		const mesh = new THREE.Mesh(geometry, material);
 		mesh.position.set(0, cm(116), cm(-60));
-		this.addRigidBox(mesh, size);
+		if (this.physics) {
+			this.physics.addBox(mesh, size);
+		}
 		return mesh;
 	}
 
@@ -671,12 +557,14 @@ class Vrui {
 					}
 				});
 				mesh.add(object);
-				if (this.world) {
+				if (this.physics) {
 					const box = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
 					box.setFromObject(object);
 					const size = box.getSize(new THREE.Vector3());
 					mesh.userData.size = size;
-					this.addRigidBox(mesh, size, 1);
+					if (this.physics) {
+						this.physics.addBox(mesh, size, 1);
+					}
 					this.bodies.push(mesh);
 				}
 			},
@@ -688,7 +576,9 @@ class Vrui {
 			});
 		mesh.name = 'toothbrush';
 		mesh.on('grab', (controller) => {
-			this.removeBody(mesh);
+			if (this.physics) {
+				this.physics.remove(mesh);
+			}
 			mesh.userData.speed = 0;
 			mesh.falling = false;
 			mesh.freeze();
@@ -726,10 +616,10 @@ class Vrui {
 				opacity: 1.0,
 				ease: Power2.easeInOut
 			});
-			if (this.world) {
-				this.addRigidBox(mesh, mesh.userData.size, 1, this.linearVelocity, this.angularVelocity);
-				this.bodies.push(mesh);
+			if (this.physics) {
+				this.physics.addBox(mesh, mesh.userData.size, 1, this.linearVelocity, this.angularVelocity);
 				/*
+				this.bodies.push(mesh);
 				body.setCollisionFlags(1); // 0 is static 1 dynamic 2 kinematic and state to 4:
 				body.setActivationState(1); // never sleep
 				*/
@@ -741,14 +631,18 @@ class Vrui {
 			if (mesh.position.y < cm(10)) {
 				const linearVelocity = mesh.userData.body.getLinearVelocity();
 				if (linearVelocity.length() < 0.03) {
-					this.removeBody(mesh);
+					if (this.physics) {
+						this.physics.remove(mesh);
+					}
 					mesh.parent.remove(mesh);
 					setTimeout(() => {
 						mesh.position.set(0, mesh.defaultY, cm(-60));
 						mesh.rotation.set(0, 0, deg(10));
 						this.scene.add(mesh);
-						this.addRigidBox(mesh, mesh.userData.size, 1);
-						this.bodies.push(mesh);
+						if (this.physics) {
+							this.physics.addBox(mesh, mesh.userData.size, 1);
+							// this.bodies.push(mesh);
+						}
 					}, 1000);
 				}
 			}
@@ -1013,7 +907,9 @@ class Vrui {
 				}
 				GrabbableGroup.grabtest(controllers);
 			}
-			this.updateVelocity(controllers.controller);
+			if (this.physics) {
+				this.physics.velocity(controllers.controller);
+			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -1024,7 +920,9 @@ class Vrui {
 			const delta = this.clock.getDelta();
 			const time = this.clock.getElapsedTime();
 			const tick = Math.floor(time * 60);
-			this.updateWorld(delta);
+			if (this.physics) {
+				this.physics.update(delta);
+			}
 			const renderer = this.renderer;
 			const scene = this.scene;
 			const camera = this.camera;

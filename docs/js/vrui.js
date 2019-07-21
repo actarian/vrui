@@ -952,13 +952,216 @@ InteractiveMesh.center = new THREE.Vector3();
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.default = void 0;
+
+var _const = require("../const");
+
+var _emittable = _interopRequireDefault(require("../interactive/emittable"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var Physics =
+/*#__PURE__*/
+function (_Emittable) {
+  _inherits(Physics, _Emittable);
+
+  function Physics() {
+    var _this;
+
+    _classCallCheck(this, Physics);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(Physics).call(this)); // this.bodies = [];
+
+    _this.meshes = [];
+    Ammo().then(function () {
+      _this.linearVelocity = new Ammo.btVector3(0, 0, 0);
+      _this.angularVelocity = new Ammo.btVector3(0, 0, 0);
+      _this.transform = new Ammo.btTransform();
+      _this.world = _this.addWorld();
+      _this.floor = _this.addFloor(); // console.log('Ammo');
+      // this.emit('init', this);
+    });
+    return _this;
+  }
+
+  _createClass(Physics, [{
+    key: "addWorld",
+    value: function addWorld() {
+      var collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
+      var dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
+      var overlappingPairCache = new Ammo.btDbvtBroadphase();
+      var solver = new Ammo.btSequentialImpulseConstraintSolver();
+      var world = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+      world.setGravity(new Ammo.btVector3(0, -1, 0));
+      return world;
+    }
+  }, {
+    key: "addFloor",
+    value: function addFloor() {
+      var floor = new THREE.Group();
+      floor.position.y = (0, _const.cm)(-20);
+      this.addBox(floor, new THREE.Vector3(10, (0, _const.cm)(40), 10));
+      return floor;
+    }
+  }, {
+    key: "update",
+    value: function update(delta) {
+      var transform = this.transform;
+      var world = this.world;
+      world.stepSimulation(delta, 10);
+      var meshes = this.meshes;
+
+      for (var i = 0; i < meshes.length; i++) {
+        var mesh = meshes[i];
+
+        if (!mesh.freezed) {
+          var body = mesh.userData.body;
+          var state = body.getMotionState();
+
+          if (state) {
+            state.getWorldTransform(transform);
+            var p = transform.getOrigin();
+            var q = transform.getRotation();
+            mesh.position.set(p.x(), p.y(), p.z());
+            mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
+
+            if (mesh.userData.respawn) {
+              mesh.userData.respawn();
+            }
+          }
+        }
+      }
+    }
+  }, {
+    key: "velocity",
+    value: function velocity(controller) {
+      if (controller) {
+        this.linearVelocity.setX(controller.linearVelocity.x * 10);
+        this.linearVelocity.setY(controller.linearVelocity.y * 10);
+        this.linearVelocity.setZ(controller.linearVelocity.z * 10);
+        this.angularVelocity.setX(controller.angularVelocity.x * 10);
+        this.angularVelocity.setY(controller.angularVelocity.y * 10);
+        this.angularVelocity.setZ(controller.angularVelocity.z * 10); // console.log(controller.linearVelocity.x, controller.linearVelocity.y, controller.angularVelocity.x, controller.angularVelocity.y);
+      }
+    }
+  }, {
+    key: "remove",
+    value: function remove(mesh) {
+      var index = this.meshes.indexOf(mesh);
+
+      if (index !== -1) {
+        this.meshes.splice(index, 1);
+        var body = mesh.userData.body;
+
+        if (body) {
+          this.world.removeRigidBody(body);
+        }
+      }
+    }
+  }, {
+    key: "addBox",
+    value: function addBox(mesh, size) {
+      var mass = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+      var linearVelocity = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
+      var angularVelocity = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : null;
+      var position = mesh.position;
+      var quaternion = mesh.quaternion;
+      var transform = new Ammo.btTransform();
+      transform.setIdentity();
+      transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
+      transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+      var state = new Ammo.btDefaultMotionState(transform);
+      var shape = new Ammo.btBoxShape(new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5));
+      shape.setMargin(0.05);
+      var inertia = new Ammo.btVector3(0, 0, 0);
+      shape.calculateLocalInertia(mass, inertia);
+      var info = new Ammo.btRigidBodyConstructionInfo(mass, state, shape, inertia);
+      var body = new Ammo.btRigidBody(info);
+
+      if (linearVelocity) {
+        body.setLinearVelocity(linearVelocity);
+      }
+
+      if (angularVelocity) {
+        body.setAngularVelocity(angularVelocity);
+      }
+
+      this.world.addRigidBody(body);
+      mesh.userData.body = body;
+      this.meshes.push(mesh);
+      return body;
+    }
+  }, {
+    key: "addSphere",
+    value: function addSphere(mesh, radius) {
+      var mass = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1;
+      var linearVelocity = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
+      var angularVelocity = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : null;
+      var position = mesh.position;
+      var quaternion = mesh.quaternion;
+      var transform = new Ammo.btTransform();
+      transform.setIdentity();
+      transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
+      transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+      var state = new Ammo.btDefaultMotionState(transform);
+      var sphere = new Ammo.btSphereShape(radius);
+      sphere.setMargin(0.05);
+      var inertia = new Ammo.btVector3(0, 0, 0);
+      sphere.calculateLocalInertia(mass, inertia);
+      var info = new Ammo.btRigidBodyConstructionInfo(mass, state, sphere, inertia);
+      var body = new Ammo.btRigidBody(info);
+
+      if (linearVelocity) {
+        body.setLinearVelocity(linearVelocity);
+      }
+
+      if (angularVelocity) {
+        body.setAngularVelocity(angularVelocity);
+      }
+
+      this.world.addRigidBody(body);
+      mesh.userData.body = body;
+      this.meshes.push(mesh);
+      return body;
+    }
+  }]);
+
+  return Physics;
+}(_emittable.default);
+
+exports.default = Physics;
+
+},{"../const":1,"../interactive/emittable":4}],11:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
 exports.ControllerFragGlsl = void 0;
 var ControllerFragGlsl =
 /* glsl */
 "\n#define MATCAP\nuniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float emissiveIntensity;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tvec4 emissiveColor = vec4( emissive, opacity );\n\t#include <logdepthbuf_fragment>\n\t/* #include <map_fragment> */\n\t#ifdef USE_MAP\n\t\tvec4 texelColor = texture2D( map, vUv );\n\t\ttexelColor = mapTexelToLinear( texelColor );\n\t\tdiffuseColor *= texelColor;\n\t\tdiffuseColor = mix(diffuseColor, emissiveColor, emissiveIntensity);\n\t#endif\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * (matcapColor.rgb + emissiveIntensity * 0.5); // max(matcapColor.rgb, emissiveColor.rgb);\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <premultiplied_alpha_fragment>\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n}\n";
 exports.ControllerFragGlsl = ControllerFragGlsl;
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1234,7 +1437,7 @@ function (_EmittableGroup) {
 
 exports.default = Controller;
 
-},{"../../const":1,"../../interactive/emittable.group":3,"../gamepads":15}],12:[function(require,module,exports){
+},{"../../const":1,"../../interactive/emittable.group":3,"../gamepads":16}],13:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1435,7 +1638,7 @@ function (_Controller) {
 exports.default = HandController;
 HandController.FOLDER = "models/hand";
 
-},{"../../const":1,"../gamepads":15,"./controller":11}],13:[function(require,module,exports){
+},{"../../const":1,"../gamepads":16,"./controller":12}],14:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1649,7 +1852,7 @@ function (_Controller) {
 exports.default = OculusQuestController;
 OculusQuestController.FOLDER = "models/oculus-quest";
 
-},{"../../const":1,"../gamepads":15,"./controller":11,"./controller-frag.glsl":10}],14:[function(require,module,exports){
+},{"../../const":1,"../gamepads":16,"./controller":12,"./controller-frag.glsl":11}],15:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2057,7 +2260,7 @@ function (_Emittable) {
 
 exports.default = Controllers;
 
-},{"../const":1,"../interactive/emittable":4,"./controller/controller":11,"./controller/hand-controller":12,"./controller/oculus-quest-controller":13,"./gamepads":15}],15:[function(require,module,exports){
+},{"../const":1,"../interactive/emittable":4,"./controller/controller":12,"./controller/hand-controller":13,"./controller/oculus-quest-controller":14,"./gamepads":16}],16:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2461,7 +2664,7 @@ function (_THREE$Vector) {
 
 exports.GamepadAxis = GamepadAxis;
 
-},{"../interactive/emittable":4}],16:[function(require,module,exports){
+},{"../interactive/emittable":4}],17:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2503,7 +2706,7 @@ var VR =
 function (_Emittable) {
   _inherits(VR, _Emittable);
 
-  function VR(renderer, options, onError) {
+  function VR(renderer, options) {
     var _this;
 
     _classCallCheck(this, VR);
@@ -2512,10 +2715,6 @@ function (_Emittable) {
 
     if (options && options.frameOfReferenceType) {
       renderer.vr.setFrameOfReferenceType(options.frameOfReferenceType);
-    }
-
-    if (onError) {
-      _this.on('error', onError);
     }
 
     _this.renderer = renderer;
@@ -2711,8 +2910,16 @@ function (_Emittable) {
     key: "onVRDisplayPresentChange",
     value: function onVRDisplayPresentChange(event) {
       try {
-        this.element.textContent = event.display.isPresenting ? 'EXIT VR' : 'ENTER VR';
-        this.session = event.display.isPresenting;
+        var isPresenting = event.display.isPresenting;
+        this.session = isPresenting;
+
+        if (isPresenting) {
+          this.element.textContent = 'EXIT VR';
+          this.emit('presenting');
+        } else {
+          this.element.textContent = 'ENTER VR';
+          this.emit('exit');
+        }
       } catch (error) {
         this.emit('error', error);
       }
@@ -2802,8 +3009,9 @@ function (_Emittable) {
       try {
         session.addEventListener('end', this.onXRSessionEnded);
         this.renderer.vr.setSession(session);
-        this.element.textContent = 'EXIT VR';
         this.session = session;
+        this.element.textContent = 'EXIT VR';
+        this.emit('presenting');
       } catch (error) {
         this.emit('error', error);
       }
@@ -2814,8 +3022,9 @@ function (_Emittable) {
       try {
         this.session.removeEventListener('end', this.onXRSessionEnded);
         this.renderer.vr.setSession(null);
-        this.element.textContent = 'ENTER VR';
         this.session = null;
+        this.element.textContent = 'ENTER VR';
+        this.emit('exit');
       } catch (error) {
         this.emit('error', error);
       }
@@ -2850,7 +3059,7 @@ VRDisplays[0]: VRDisplay {
 
 exports.VR = VR;
 
-},{"../interactive/emittable":4}],17:[function(require,module,exports){
+},{"../interactive/emittable":4}],18:[function(require,module,exports){
 "use strict";
 
 var _const = require("./const");
@@ -2864,6 +3073,8 @@ var _freezable2 = _interopRequireDefault(require("./interactive/freezable.mesh")
 var _grabbable = _interopRequireDefault(require("./interactive/grabbable.group"));
 
 var _interactive = _interopRequireDefault(require("./interactive/interactive.mesh"));
+
+var _physics = _interopRequireDefault(require("./physics/physics"));
 
 var _controllers = _interopRequireDefault(require("./vr/controllers"));
 
@@ -2910,7 +3121,8 @@ function () {
     container.appendChild(renderer.domElement);
     var vr = this.vr = new _vr.VR(renderer, {
       referenceSpaceType: 'local'
-    }, function (error) {
+    });
+    vr.on('error', function (error) {
       _this.debugInfo.innerHTML = error;
     });
     container.appendChild(vr.element);
@@ -2932,11 +3144,16 @@ function () {
     var controllers = this.controllers = this.addControllers(renderer, vr, scene);
     this.addListeners();
     this.onWindowResize = this.onWindowResize.bind(this);
-    window.addEventListener('resize', this.onWindowResize, false); // Ammo().then(() => {
+    window.addEventListener('resize', this.onWindowResize, false);
+    var physics = this.physics = new _physics.default();
+    /*
+    physics.on('init', () => {
+    	console.log('init');
+    	this.addMeshes();
+    });
+    */
 
-    var world = this.world = this.addWorld();
-    var floor = this.floor = this.addWorldFloor();
-    this.addMeshes(); // });
+    this.addMeshes();
   }
 
   _createClass(Vrui, [{
@@ -2957,152 +3174,6 @@ function () {
       scene.add(stand);
       var toothbrush = this.toothbrush = this.addToothBrush();
       scene.add(toothbrush);
-    }
-  }, {
-    key: "addWorld",
-    value: function addWorld() {
-      this.bodies = [];
-      this.linearVelocity = new Ammo.btVector3(0, 0, 0);
-      this.angularVelocity = new Ammo.btVector3(0, 0, 0);
-      var transform = this.transform = new Ammo.btTransform();
-      var collisionConfiguration = new Ammo.btDefaultCollisionConfiguration(),
-          dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration),
-          overlappingPairCache = new Ammo.btDbvtBroadphase(),
-          solver = new Ammo.btSequentialImpulseConstraintSolver();
-      var world = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
-      world.setGravity(new Ammo.btVector3(0, -1, 0));
-      return world;
-    }
-  }, {
-    key: "addWorldFloor",
-    value: function addWorldFloor() {
-      var floor = new THREE.Group();
-      floor.position.y = (0, _const.cm)(-20);
-      this.addRigidBox(floor, new THREE.Vector3(10, (0, _const.cm)(40), 10));
-      return floor;
-    }
-  }, {
-    key: "updateWorld",
-    value: function updateWorld(delta) {
-      if (this.world) {
-        var transform = this.transform;
-        this.world.stepSimulation(delta, 10);
-
-        for (var i = 0; i < this.bodies.length; i++) {
-          var mesh = this.bodies[i];
-
-          if (!mesh.freezed) {
-            var body = mesh.userData.body;
-            var state = body.getMotionState();
-
-            if (state) {
-              state.getWorldTransform(transform);
-              var p = transform.getOrigin();
-              var q = transform.getRotation();
-              mesh.position.set(p.x(), p.y(), p.z());
-              mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
-              mesh.userData.respawn();
-            }
-          }
-        }
-      }
-    }
-  }, {
-    key: "updateVelocity",
-    value: function updateVelocity(controller) {
-      if (this.world && controller) {
-        this.linearVelocity.setX(controller.linearVelocity.x * 10);
-        this.linearVelocity.setY(controller.linearVelocity.y * 10);
-        this.linearVelocity.setZ(controller.linearVelocity.z * 10);
-        this.angularVelocity.setX(controller.angularVelocity.x * 10);
-        this.angularVelocity.setY(controller.angularVelocity.y * 10);
-        this.angularVelocity.setZ(controller.angularVelocity.z * 10);
-        console.log(controller.linearVelocity.x, controller.linearVelocity.y, controller.angularVelocity.x, controller.angularVelocity.y);
-      }
-    }
-  }, {
-    key: "removeBody",
-    value: function removeBody(mesh) {
-      var index = this.bodies.indexOf(mesh);
-
-      if (index !== -1) {
-        this.bodies.splice(index, 1);
-        var body = mesh.userData.body;
-
-        if (body) {
-          this.world.removeRigidBody(body);
-        }
-      }
-    }
-  }, {
-    key: "addRigidBox",
-    value: function addRigidBox(mesh, size) {
-      var mass = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
-      var linearVelocity = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
-      var angularVelocity = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : null;
-
-      if (this.world) {
-        var position = mesh.position;
-        var quaternion = mesh.quaternion;
-        var transform = new Ammo.btTransform();
-        transform.setIdentity();
-        transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
-        transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
-        var state = new Ammo.btDefaultMotionState(transform);
-        var box = new Ammo.btBoxShape(new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5));
-        box.setMargin(0.05);
-        var inertia = new Ammo.btVector3(0, 0, 0);
-        box.calculateLocalInertia(mass, inertia);
-        var info = new Ammo.btRigidBodyConstructionInfo(mass, state, box, inertia);
-        var body = new Ammo.btRigidBody(info);
-
-        if (linearVelocity) {
-          body.setLinearVelocity(linearVelocity);
-        }
-
-        if (angularVelocity) {
-          body.setAngularVelocity(angularVelocity);
-        }
-
-        this.world.addRigidBody(body);
-        mesh.userData.body = body;
-        return body;
-      }
-    }
-  }, {
-    key: "addRigidSphere",
-    value: function addRigidSphere(mesh, radius) {
-      var mass = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1;
-      var linearVelocity = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
-      var angularVelocity = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : null;
-
-      if (this.world) {
-        var position = mesh.position;
-        var quaternion = mesh.quaternion;
-        var transform = new Ammo.btTransform();
-        transform.setIdentity();
-        transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
-        transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
-        var state = new Ammo.btDefaultMotionState(transform);
-        var sphere = new Ammo.btSphereShape(radius);
-        sphere.setMargin(0.05);
-        var inertia = new Ammo.btVector3(0, 0, 0);
-        sphere.calculateLocalInertia(mass, inertia);
-        var info = new Ammo.btRigidBodyConstructionInfo(mass, state, sphere, inertia);
-        var body = new Ammo.btRigidBody(info);
-
-        if (linearVelocity) {
-          body.setLinearVelocity(linearVelocity);
-        }
-
-        if (angularVelocity) {
-          body.setAngularVelocity(angularVelocity);
-        }
-
-        this.world.addRigidBody(body);
-        mesh.userData.body = body;
-        return body;
-      }
     }
   }, {
     key: "addListeners",
@@ -3515,7 +3586,11 @@ function () {
       var geometry = new _roundBox.default(size.x, size.y, size.z, (0, _const.mm)(5), 1, 1, 1, 5);
       var mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(0, (0, _const.cm)(116), (0, _const.cm)(-60));
-      this.addRigidBox(mesh, size);
+
+      if (this.physics) {
+        this.physics.addBox(mesh, size);
+      }
+
       return mesh;
     }
   }, {
@@ -3612,7 +3687,7 @@ function () {
         });
         mesh.add(object);
 
-        if (_this3.world) {
+        if (_this3.physics) {
           var _box = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
 
           _box.setFromObject(object);
@@ -3621,7 +3696,9 @@ function () {
 
           mesh.userData.size = size;
 
-          _this3.addRigidBox(mesh, size, 1);
+          if (_this3.physics) {
+            _this3.physics.addBox(mesh, size, 1);
+          }
 
           _this3.bodies.push(mesh);
         }
@@ -3631,7 +3708,9 @@ function () {
       });
       mesh.name = 'toothbrush';
       mesh.on('grab', function (controller) {
-        _this3.removeBody(mesh);
+        if (_this3.physics) {
+          _this3.physics.remove(mesh);
+        }
 
         mesh.userData.speed = 0;
         mesh.falling = false;
@@ -3674,11 +3753,10 @@ function () {
           ease: Power2.easeInOut
         });
 
-        if (_this3.world) {
-          _this3.addRigidBox(mesh, mesh.userData.size, 1, _this3.linearVelocity, _this3.angularVelocity);
-
-          _this3.bodies.push(mesh);
+        if (_this3.physics) {
+          _this3.physics.addBox(mesh, mesh.userData.size, 1, _this3.linearVelocity, _this3.angularVelocity);
           /*
+          this.bodies.push(mesh);
           body.setCollisionFlags(1); // 0 is static 1 dynamic 2 kinematic and state to 4:
           body.setActivationState(1); // never sleep
           */
@@ -3693,7 +3771,9 @@ function () {
           var linearVelocity = mesh.userData.body.getLinearVelocity();
 
           if (linearVelocity.length() < 0.03) {
-            _this3.removeBody(mesh);
+            if (_this3.physics) {
+              _this3.physics.remove(mesh);
+            }
 
             mesh.parent.remove(mesh);
             setTimeout(function () {
@@ -3702,9 +3782,10 @@ function () {
 
               _this3.scene.add(mesh);
 
-              _this3.addRigidBox(mesh, mesh.userData.size, 1);
+              if (_this3.physics) {
+                _this3.physics.addBox(mesh, mesh.userData.size, 1); // this.bodies.push(mesh);
 
-              _this3.bodies.push(mesh);
+              }
             }, 1000);
           }
         }
@@ -3998,7 +4079,9 @@ function () {
           _grabbable.default.grabtest(controllers);
         }
 
-        this.updateVelocity(controllers.controller);
+        if (this.physics) {
+          this.physics.velocity(controllers.controller);
+        }
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -4010,7 +4093,11 @@ function () {
         var delta = this.clock.getDelta();
         var time = this.clock.getElapsedTime();
         var tick = Math.floor(time * 60);
-        this.updateWorld(delta);
+
+        if (this.physics) {
+          this.physics.update(delta);
+        }
+
         var renderer = this.renderer;
         var scene = this.scene;
         var camera = this.camera;
@@ -4052,5 +4139,5 @@ function () {
 var instance = new Vrui();
 instance.animate();
 
-},{"./const":1,"./geometries/round-box.geometry":2,"./interactive/freezable.group":6,"./interactive/freezable.mesh":7,"./interactive/grabbable.group":8,"./interactive/interactive.mesh":9,"./vr/controllers":14,"./vr/gamepads":15,"./vr/vr":16}]},{},[17]);
+},{"./const":1,"./geometries/round-box.geometry":2,"./interactive/freezable.group":6,"./interactive/freezable.mesh":7,"./interactive/grabbable.group":8,"./interactive/interactive.mesh":9,"./physics/physics":10,"./vr/controllers":15,"./vr/gamepads":16,"./vr/vr":17}]},{},[18]);
 //# sourceMappingURL=vrui.js.map

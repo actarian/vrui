@@ -12,6 +12,18 @@
 			}],
 			"bundle": [{
 				"input": [
+					"node_modules/ammo.js/builds/ammo.js"
+				],
+				"output": "docs/js/ammo.js",
+				"minify": false
+			}, {
+				"input": [
+					"node_modules/ammo.js/builds/ammo.wasm.js"
+				],
+				"output": "docs/js/ammo.wasm.js",
+				"minify": false
+			}, {
+				"input": [
 					"node_modules/gsap/src/uncompressed/easing/EasePack.js",
 					"node_modules/gsap/src/uncompressed/TweenMax.js",
 					"node_modules/three/build/three.js",
@@ -22,8 +34,7 @@
 					"node_modules/three/examples/js/libs/inflate.min.js",
 					"node_modules/three/examples/js/loaders/EquirectangularToCubeGenerator.js",
 					"node_modules/three/examples/js/loaders/RGBELoader.js",
-					"node_modules/three/examples/js/utils/BufferGeometryUtils.js",
-					"node_modules/ammo.js/ammo.js"
+					"node_modules/three/examples/js/utils/BufferGeometryUtils.js"
 				],
 				"output": "docs/js/vrui-vendors.js",
 				"minify": true
