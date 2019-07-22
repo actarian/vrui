@@ -10,7 +10,9 @@ import FreezableGroup from './interactive/freezable.group';
 import FreezableMesh from './interactive/freezable.mesh';
 import GrabbableGroup from './interactive/grabbable.group';
 import InteractiveMesh from './interactive/interactive.mesh';
-import Physics from './physics/physics';
+import Materials from './materials/materials';
+// import Physics from './physics/physics';
+import PhysicsWorker from './physics/physics.worker';
 import Controllers from './vr/controllers';
 import { GAMEPAD_HANDS } from './vr/gamepads';
 import { VR, VR_MODE } from './vr/vr';
@@ -21,6 +23,8 @@ class Vrui {
 		this.tick = 0;
 		this.mouse = { x: 0, y: 0 };
 		this.clock = new THREE.Clock();
+		this.linearVelocity = new THREE.Vector3();
+		this.angularVelocity = new THREE.Vector3();
 		// this.size = { width: 0, height: 0, aspect: 0 };
 		// this.cameraDirection = new THREE.Vector3();
 		//
@@ -55,15 +59,10 @@ class Vrui {
 		const camera = this.camera = this.addCamera();
 		scene.add(camera);
 
-		const light = new THREE.HemisphereLight(0xffffff, 0x330000, 1.2);
-		scene.add(light);
-
-		const materials = this.materials = this.addMaterials(scene.background);
-
-		/*
-		const bg = this.bg = this.addBG();
-		scene.add(bg);
-		*/
+		if (false) {
+			const light = new THREE.HemisphereLight(0xffffff, 0x330000, 1.2);
+			scene.add(light);
+		}
 
 		const controllers = this.controllers = this.addControllers(renderer, vr, scene);
 
@@ -72,21 +71,49 @@ class Vrui {
 		this.onWindowResize = this.onWindowResize.bind(this);
 		window.addEventListener('resize', this.onWindowResize, false);
 
-		const physics = this.physics = new Physics();
+		// const physics = this.physics = new Physics();
+		const physics = this.physics = new PhysicsWorker();
+		const floor = this.floor = this.addFloor();
 		/*
 		physics.on('init', () => {
 			console.log('init');
 			this.addMeshes();
 		});
 		*/
-		this.addMeshes();
+		setTimeout(() => {
+			// const materials = this.materials = this.addMaterials(scene.background);
+			const materials = this.materials = new Materials(scene.background);
+			/*
+			const bg = this.bg = this.addBG();
+			scene.add(bg);
+			*/
+			this.addMeshes();
+		}, 1000);
 
+	}
+
+	addFloor() {
+		if (this.physics) {
+			const floor = new THREE.Group();
+			floor.position.y = cm(-20);
+			this.physics.addBox(floor, new THREE.Vector3(10, cm(40), 10));
+			return floor;
+		}
+	}
+
+	updateVelocity(controller) {
+		if (controller) {
+			this.linearVelocity.copy(controller.linearVelocity).multiplyScalar(10);
+			this.angularVelocity.copy(controller.angularVelocity).multiplyScalar(10);
+		}
 	}
 
 	addMeshes() {
 		const scene = this.scene;
+		/*
 		const banner = this.banner = this.addBanner();
 		scene.add(banner);
+		*/
 		if (TRIGGER_CUBES) {
 			const cube0 = this.cube0 = this.addRoundedCube(0);
 			scene.add(cube0);
@@ -237,113 +264,6 @@ class Vrui {
 		}
 	}
 
-	addMaterials(texture) {
-		/*
-		const texture = new THREE.loader().load('img/matcap.jpg');
-		const material = new THREE.MeshMatcapMaterial({
-			color: 0xffffff,
-			matcap: texture,
-			transparent: true,
-			opacity: 1,
-		});
-		*/
-		// const texture = this.getEnvMap();
-		const bodyPrimaryClear = this.getBodyPrimaryClear(texture);
-		const logoSilver = this.getLogoSilver(texture);
-		const bodySecondary = this.getBodySecondary(texture);
-		const bristlesPrimary = this.getBristlesPrimary();
-		const bristlesSecondary = this.getBristlesSecondary();
-		return {
-			bodyPrimaryClear,
-			bodySecondary,
-			bristlesPrimary,
-			bristlesSecondary,
-			logoSilver,
-		};
-	}
-
-	getBodyPrimaryClear(texture) {
-		const material = new THREE.MeshPhongMaterial({
-			color: 0xffffff,
-			envMap: texture,
-			transparent: true,
-			refractionRatio: 0.6,
-			reflectivity: 0.8,
-			opacity: 0.25,
-			alphaTest: 0.2,
-			/*
-			refractionRatio: 0.99,
-			reflectivity: 0.99,
-			opacity: 0.5,
-			*/
-			side: THREE.DoubleSide,
-			// blending: THREE.AdditiveBlending,
-		});
-		// material.vertexTangents = true;
-		return material;
-	}
-
-	getBodySecondary(texture) {
-		const material = new THREE.MeshStandardMaterial({
-			color: 0xe11e26,
-			// emissive: 0x4f0300,
-			roughness: 0.2,
-			metalness: 0.2,
-			// envMap: texture,
-			// envMapIntensity: 0.4,
-			// The refractionRatio must have value in the range 0 to 1.
-			// The default value, very close to 1, give almost invisible glass.
-			// refractionRatio: 0,
-			// side: THREE.DoubleSide,
-		});
-		return material;
-	}
-
-	getBristlesPrimary(texture) {
-		// const lightMap = new THREE.TextureLoader().load('img/scalare-33-bristlesPrimary-lightmap.jpg');
-		const material = new THREE.MeshStandardMaterial({
-			color: 0x024c99, // 0x1f45c0,
-			// emissive: 0x333333,
-			// map: lightMap,
-			// normalMap: lightMap,
-			// metalnessMap: lightMap,
-			roughness: 0.9,
-			metalness: 0.0,
-		});
-		return material;
-	}
-
-	getBristlesSecondary(texture) {
-		// const lightMap = new THREE.TextureLoader().load('img/scalare-33-bristlesSecondary-lightmap.jpg');
-		const material = new THREE.MeshStandardMaterial({
-			color: 0x15b29a, // 0x1aac4e,
-			// emissive: 0x333333,
-			// map: lightMap,
-			// normalMap: lightMap,
-			// metalnessMap: lightMap,
-			roughness: 0.9,
-			metalness: 0.0,
-		});
-		return material;
-	}
-
-	getLogoSilver() {
-		const texture = new THREE.TextureLoader().load('img/models/toothbrush-logo.png');
-		const material = new THREE.MeshStandardMaterial({
-			color: 0xffffff,
-			map: texture,
-			transparent: true,
-			roughness: 0.15,
-			metalness: 0.9,
-			// envMap: texture,
-			// side: THREE.DoubleSide,
-			//
-			// opacity: 1,
-			// alphaTest: 0.1,
-		});
-		return material;
-	}
-
 	addCube(index) {
 		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-00.jpg');
 		const geometry = new THREE.BoxGeometry(cm(20), cm(20), cm(20));
@@ -461,14 +381,9 @@ class Vrui {
 	}
 
 	addStand() {
-		const material = new THREE.MeshStandardMaterial({
-			color: 0xffffff,
-			roughness: 0.2,
-			metalness: 0.2,
-		});
 		const size = new THREE.Vector3(cm(40), mm(10), cm(20));
 		const geometry = new RoundBoxGeometry(size.x, size.y, size.z, mm(5), 1, 1, 1, 5);
-		const mesh = new THREE.Mesh(geometry, material);
+		const mesh = new THREE.Mesh(geometry, this.materials.white);
 		mesh.position.set(0, cm(116), cm(-60));
 		if (this.physics) {
 			this.physics.addBox(mesh, size);
@@ -565,14 +480,14 @@ class Vrui {
 					if (this.physics) {
 						this.physics.addBox(mesh, size, 1);
 					}
-					this.bodies.push(mesh);
+					// this.bodies.push(mesh);
 				}
 			},
 			(xhr) => {
 				// console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 			},
 			(error) => {
-				console.log('An error happened');
+				console.log('An error happened', error);
 			});
 		mesh.name = 'toothbrush';
 		mesh.on('grab', (controller) => {
@@ -627,10 +542,11 @@ class Vrui {
 				mesh.falling = true;
 			}
 		});
-		mesh.userData.respawn = () => {
+		mesh.userData.respawn = (data) => {
 			if (mesh.position.y < cm(10)) {
-				const linearVelocity = mesh.userData.body.getLinearVelocity();
-				if (linearVelocity.length() < 0.03) {
+				// const linearVelocity = mesh.userData.body.getLinearVelocity();
+				// if (linearVelocity.length() < 0.03) {
+				if (data && data.speed < 0.03) {
 					if (this.physics) {
 						this.physics.remove(mesh);
 					}
@@ -818,8 +734,7 @@ class Vrui {
 		return mesh;
 	}
 
-	checkCameraPosition() {
-		return false;
+	checkCameraPosition__() {
 		const tick = this.tick;
 		const camera = this.camera;
 		const controllers = this.controllers;
@@ -907,9 +822,6 @@ class Vrui {
 				}
 				GrabbableGroup.grabtest(controllers);
 			}
-			if (this.physics) {
-				this.physics.velocity(controllers.controller);
-			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -931,7 +843,10 @@ class Vrui {
 			if (this.controllers) {
 				this.controllers.update();
 				this.updateRaycaster();
-				this.checkCameraPosition();
+				// this.checkCameraPosition__();
+				if (this.physics) {
+					this.updateVelocity(this.controllers.controller);
+				}
 			}
 			camera.onBeforeRender(renderer, scene);
 			renderer.render(scene, camera);

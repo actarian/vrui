@@ -1,4 +1,5 @@
-import { cm } from '../const';
+/* jshint esversion: 6 */
+
 import Emittable from '../interactive/emittable';
 
 export default class Physics extends Emittable {
@@ -8,11 +9,8 @@ export default class Physics extends Emittable {
 		// this.bodies = [];
 		this.meshes = [];
 		Ammo().then(() => {
-			this.linearVelocity = new Ammo.btVector3(0, 0, 0);
-			this.angularVelocity = new Ammo.btVector3(0, 0, 0);
 			this.transform = new Ammo.btTransform();
 			this.world = this.addWorld();
-			this.floor = this.addFloor();
 			// console.log('Ammo');
 			// this.emit('init', this);
 		});
@@ -28,17 +26,10 @@ export default class Physics extends Emittable {
 		return world;
 	}
 
-	addFloor() {
-		const floor = new THREE.Group();
-		floor.position.y = cm(-20);
-		this.addBox(floor, new THREE.Vector3(10, cm(40), 10));
-		return floor;
-	}
-
 	update(delta) {
 		const transform = this.transform;
 		const world = this.world;
-		world.stepSimulation(delta, 10);
+		world.stepSimulation(delta, 2);
 		const meshes = this.meshes;
 		for (let i = 0; i < meshes.length; i++) {
 			const mesh = meshes[i];
@@ -51,23 +42,14 @@ export default class Physics extends Emittable {
 					const q = transform.getRotation();
 					mesh.position.set(p.x(), p.y(), p.z());
 					mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
+					const velocity = body.getLinearVelocity();
+					item.speed = velocity.length();
+					mesh.isActive = body.isActive();
 					if (mesh.userData.respawn) {
-						mesh.userData.respawn();
+						mesh.userData.respawn(mesh);
 					}
 				}
 			}
-		}
-	}
-
-	velocity(controller) {
-		if (controller) {
-			this.linearVelocity.setX(controller.linearVelocity.x * 10);
-			this.linearVelocity.setY(controller.linearVelocity.y * 10);
-			this.linearVelocity.setZ(controller.linearVelocity.z * 10);
-			this.angularVelocity.setX(controller.angularVelocity.x * 10);
-			this.angularVelocity.setY(controller.angularVelocity.y * 10);
-			this.angularVelocity.setZ(controller.angularVelocity.z * 10);
-			// console.log(controller.linearVelocity.x, controller.linearVelocity.y, controller.angularVelocity.x, controller.angularVelocity.y);
 		}
 	}
 
@@ -97,10 +79,10 @@ export default class Physics extends Emittable {
 		const info = new Ammo.btRigidBodyConstructionInfo(mass, state, shape, inertia);
 		const body = new Ammo.btRigidBody(info);
 		if (linearVelocity) {
-			body.setLinearVelocity(linearVelocity);
+			body.setLinearVelocity(new Ammo.btVector3(linearVelocity.x, linearVelocity.y, linearVelocity.z));
 		}
 		if (angularVelocity) {
-			body.setAngularVelocity(angularVelocity);
+			body.setAngularVelocity(new Ammo.btVector3(angularVelocity.x, angularVelocity.y, angularVelocity.z));
 		}
 		this.world.addRigidBody(body);
 		mesh.userData.body = body;
@@ -123,10 +105,10 @@ export default class Physics extends Emittable {
 		const info = new Ammo.btRigidBodyConstructionInfo(mass, state, sphere, inertia);
 		const body = new Ammo.btRigidBody(info);
 		if (linearVelocity) {
-			body.setLinearVelocity(linearVelocity);
+			body.setLinearVelocity(new Ammo.btVector3(linearVelocity.x, linearVelocity.y, linearVelocity.z));
 		}
 		if (angularVelocity) {
-			body.setAngularVelocity(angularVelocity);
+			body.setAngularVelocity(new Ammo.btVector3(angularVelocity.x, angularVelocity.y, angularVelocity.z));
 		}
 		this.world.addRigidBody(body);
 		mesh.userData.body = body;

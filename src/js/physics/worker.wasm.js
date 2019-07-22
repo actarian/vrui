@@ -1,16 +1,14 @@
+/* jshint esversion: 6 */
+
 const Module = { TOTAL_MEMORY: 256 * 1024 * 1024 };
 
 importScripts('./ammo.wasm.js');
 
-const SIZE = { x: 1, y: 1, z: 1 };
-const VECTOR = { x: 0, y: 0, z: 0 };
-const QUATERNION = { x: 0, y: 0, z: 0, w: 0 };
-const NUMRANGE = [];
-const OBJECTS = [];
-const BODIES = [];
-let NUM = 0;
-
 Ammo().then((Ammo) => {
+
+	const transform = new Ammo.btTransform(); // taking this out of readBulletObject reduces the leaking
+	const ITEMS = [];
+	const BODIES = [];
 
 	// Bullet-interfacing code
 	const configuration = new Ammo.btDefaultCollisionConfiguration();
@@ -18,13 +16,28 @@ Ammo().then((Ammo) => {
 	const cache = new Ammo.btDbvtBroadphase();
 	const solver = new Ammo.btSequentialImpulseConstraintSolver();
 	const world = new Ammo.btDiscreteDynamicsWorld(dispatcher, cache, solver, configuration);
-	world.setGravity(new Ammo.btVector3(0, -10, 0));
+	world.setGravity(new Ammo.btVector3(0, -1, 0));
+
+	function remove(data) {
+		let body;
+		const item = ITEMS.find(x => x.id === data.id);
+		const index = ITEMS.indexOf(item);
+		if (index !== -1) {
+			body = BODIES[index];
+			ITEMS.splice(index, 1);
+			BODIES.splice(index, 1);
+			if (body) {
+				world.removeRigidBody(body);
+			}
+		}
+		return body;
+	}
 
 	function addBox(data) {
 		const mass = data.mass || 0;
-		const size = data.size || SIZE;
-		const position = data.position || VECTOR;
-		const quaternion = data.quaternion || QUATERNION;
+		const size = data.size || { x: 1, y: 1, z: 1 };
+		const position = data.position || { x: 0, y: 0, z: 0 };
+		const quaternion = data.quaternion || { x: 0, y: 0, z: 0, w: 0 };
 		const linearVelocity = data.linearVelocity;
 		const angularVelocity = data.angularVelocity;
 		const transform = new Ammo.btTransform();
@@ -40,157 +53,187 @@ Ammo().then((Ammo) => {
 		const info = new Ammo.btRigidBodyConstructionInfo(mass, state, shape, inertia);
 		const body = new Ammo.btRigidBody(info);
 		if (linearVelocity) {
-			body.setLinearVelocity(linearVelocity);
+			body.setLinearVelocity(new Ammo.btVector3(linearVelocity.x, linearVelocity.y, linearVelocity.z));
 		}
 		if (angularVelocity) {
-			body.setAngularVelocity(angularVelocity);
+			body.setAngularVelocity(new Ammo.btVector3(angularVelocity.x, angularVelocity.y, angularVelocity.z));
 		}
 		world.addRigidBody(body);
+		ITEMS.push(data);
 		BODIES.push(body);
-		// data.body = body;
-		// OBJECTS.push(data);
 		return body;
 	}
 
-	function removeBody(data) {
-
-	}
-
-	/*
-	const groundBody = addBox({
-		mass: 0,
-		size: { x: 50, y: 50, z: 50 },
-		position: { x: 0, y: -56, z: 0 }
-	});
-	*/
-
-	const transform = new Ammo.btTransform(); // taking this out of readBulletObject reduces the leaking
-
-	function readBulletObject(i, object) {
-		const body = BODIES[i];
-		body.getMotionState().getWorldTransform(transform);
-		const origin = transform.getOrigin();
-		object[0] = origin.x();
-		object[1] = origin.y();
-		object[2] = origin.z();
-		const rotation = transform.getRotation();
-		object[3] = rotation.x();
-		object[4] = rotation.y();
-		object[5] = rotation.z();
-		object[6] = rotation.w();
-		object.active = body.isActive();
-	}
-
-	/*
-	const boxShape = new Ammo.btBoxShape(new Ammo.btVector3(1, 1, 1));
-
-	function resetPositions() {
-		const side = Math.ceil(Math.pow(NUM, 1 / 3));
-		let i = 1;
-		for (let x = 0; x < side; x++) {
-			for (let y = 0; y < side; y++) {
-				for (let z = 0; z < side; z++) {
-					if (i == BODIES.length) break;
-					const body = BODIES[i++];
-					const origin = body.getWorldTransform().getOrigin();
-					origin.setX((x - side / 2) * (2.2 + Math.random()));
-					origin.setY(y * (3 + Math.random()));
-					origin.setZ((z - side / 2) * (2.2 + Math.random()) - side - 3);
-					body.activate();
-					const rotation = body.getWorldTransform().getRotation();
-					rotation.setX(1);
-					rotation.setY(0);
-					rotation.setZ(0);
-					rotation.setW(1);
-				}
-			}
+	function addSphere(data) {
+		const mass = data.mass || 0;
+		const radius = data.radius || 1;
+		const position = data.position || { x: 0, y: 0, z: 0 };
+		const quaternion = data.quaternion || { x: 0, y: 0, z: 0, w: 0 };
+		const linearVelocity = data.linearVelocity;
+		const angularVelocity = data.angularVelocity;
+		const transform = new Ammo.btTransform();
+		transform.setIdentity();
+		transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
+		transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+		const state = new Ammo.btDefaultMotionState(transform);
+		const shape = new Ammo.btSphereShape(radius);
+		shape.setMargin(0.05);
+		const inertia = new Ammo.btVector3(0, 0, 0);
+		shape.calculateLocalInertia(mass, inertia);
+		const info = new Ammo.btRigidBodyConstructionInfo(mass, state, shape, inertia);
+		const body = new Ammo.btRigidBody(info);
+		if (linearVelocity) {
+			body.setLinearVelocity(new Ammo.btVector3(linearVelocity.x, linearVelocity.y, linearVelocity.z));
 		}
-	}
-	function startUp() {
-		NUMRANGE.forEach(function(i) {
-			const startTransform = new Ammo.btTransform();
-			startTransform.setIdentity();
-			const mass = 1;
-			const inertia = new Ammo.btVector3(0, 0, 0);
-			boxShape.calculateLocalInertia(mass, inertia);
-			const state = new Ammo.btDefaultMotionState(startTransform);
-			const rbInfo = new Ammo.btRigidBodyConstructionInfo(mass, state, boxShape, inertia);
-			const body = new Ammo.btRigidBody(rbInfo);
-			world.addRigidBody(body);
-			BODIES.push(body);
-		});
-		resetPositions();
+		if (angularVelocity) {
+			body.setAngularVelocity(new Ammo.btVector3(angularVelocity.x, angularVelocity.y, angularVelocity.z));
+		}
+		world.addRigidBody(body);
+		ITEMS.push(data);
+		BODIES.push(body);
+		return body;
 	}
 
-	let nextTimeToRestart = 0;
-	function timeToRestart() { // restart if at least one is inactive - the scene is starting to get boring
-		if (nextTimeToRestart) {
-			if (Date.now() >= nextTimeToRestart) {
-				nextTimeToRestart = 0;
-				return true;
-			}
-			return false;
-		}
-		for (let i = 1; i <= NUM; i++) {
-			const body = BODIES[i];
-			if (!body.isActive()) {
-				nextTimeToRestart = Date.now() + 1000; // add another second after first is inactive
+	function parseActions(event) {
+		let body;
+		const data = event.data;
+		switch (data.action) {
+			case 'remove':
+				body = remove(data);
 				break;
+			case 'addBox':
+				body = addBox(data);
+				break;
+			case 'addSphere':
+				body = addSphere(data);
+				break;
+		}
+	}
+
+	onmessage = parseActions;
+
+	function stepSimulation(delta) {
+		delta = delta || 1;
+		world.stepSimulation(delta, 2);
+		for (let i = 0; i < ITEMS.length; i++) {
+			const item = ITEMS[i];
+			const body = BODIES[i];
+			body.getMotionState().getWorldTransform(transform);
+			const origin = transform.getOrigin();
+			item.position.x = origin.x();
+			item.position.y = origin.y();
+			item.position.z = origin.z();
+			const rotation = transform.getRotation();
+			item.quaternion.x = rotation.x();
+			item.quaternion.y = rotation.y();
+			item.quaternion.z = rotation.z();
+			item.quaternion.w = rotation.w();
+			const velocity = body.getLinearVelocity();
+			item.speed = velocity.length();
+			item.isActive = body.isActive();
+		}
+		postMessage(ITEMS);
+	}
+
+	function start() {
+		let overallFps_ = 0;
+		let fps_ = 0;
+		let tick = 1;
+		let last = Date.now();
+		let interval = null;
+
+		function getFPS(delta) {
+			const overallStep_ = 1 / tick++;
+			overallFps_ = overallStep_ * delta + (1 - overallStep_) * overallFps_;
+			const step_ = fps_ > 0 ? Math.min(0.1, delta / 1000) : 0.1; // first run
+			fps_ = step_ * delta + (1 - step_) * fps_;
+			const fps = Math.round(1000 / fps_);
+			const overallFps = Math.round(1000 / overallFps_);
+		}
+
+		function loop() {
+			const now = Date.now();
+			stepSimulation(now - last);
+			// getFPS(now - last);
+			last = now;
+		}
+
+		if (interval) {
+			clearInterval(interval);
+		}
+
+		interval = setInterval(loop, 1000 / 60);
+	}
+
+	start();
+
+});
+
+/*
+const groundBody = addBox({
+	mass: 0,
+	size: { x: 50, y: 50, z: 50 },
+	position: { x: 0, y: -56, z: 0 }
+});
+*/
+
+/*
+const boxShape = new Ammo.btBoxShape(new Ammo.btVector3(1, 1, 1));
+
+function resetPositions() {
+	const side = Math.ceil(Math.pow(NUM, 1 / 3));
+	let i = 1;
+	for (let x = 0; x < side; x++) {
+		for (let y = 0; y < side; y++) {
+			for (let z = 0; z < side; z++) {
+				if (i == BODIES.length) break;
+				const body = BODIES[i++];
+				const origin = body.getWorldTransform().getOrigin();
+				origin.setX((x - side / 2) * (2.2 + Math.random()));
+				origin.setY(y * (3 + Math.random()));
+				origin.setZ((z - side / 2) * (2.2 + Math.random()) - side - 3);
+				body.activate();
+				const rotation = body.getWorldTransform().getRotation();
+				rotation.setX(1);
+				rotation.setY(0);
+				rotation.setZ(0);
+				rotation.setW(1);
 			}
+		}
+	}
+}
+function startUp() {
+	NUMRANGE.forEach(function(i) {
+		const startTransform = new Ammo.btTransform();
+		startTransform.setIdentity();
+		const mass = 1;
+		const inertia = new Ammo.btVector3(0, 0, 0);
+		boxShape.calculateLocalInertia(mass, inertia);
+		const state = new Ammo.btDefaultMotionState(startTransform);
+		const rbInfo = new Ammo.btRigidBodyConstructionInfo(mass, state, boxShape, inertia);
+		const body = new Ammo.btRigidBody(rbInfo);
+		world.addRigidBody(body);
+		BODIES.push(body);
+	});
+	resetPositions();
+}
+
+let nextTimeToRestart = 0;
+function timeToRestart() { // restart if at least one is inactive - the scene is starting to get boring
+	if (nextTimeToRestart) {
+		if (Date.now() >= nextTimeToRestart) {
+			nextTimeToRestart = 0;
+			return true;
 		}
 		return false;
 	}
-	*/
-
-	let meanDt = 0,
-		meanDt2 = 0,
-		frame = 1;
-
-	function simulate(dt) {
-		dt = dt || 1;
-
-		world.stepSimulation(dt, 2);
-
-		let alpha;
-		if (meanDt > 0) {
-			alpha = Math.min(0.1, dt / 1000);
-		} else {
-			alpha = 0.1; // first run
+	for (let i = 1; i <= NUM; i++) {
+		const body = BODIES[i];
+		if (!body.isActive()) {
+			nextTimeToRestart = Date.now() + 1000; // add another second after first is inactive
+			break;
 		}
-		meanDt = alpha * dt + (1 - alpha) * meanDt;
-
-		const alpha2 = 1 / frame++;
-		meanDt2 = alpha2 * dt + (1 - alpha2) * meanDt2;
-
-		const data = { objects: [], currFPS: Math.round(1000 / meanDt), allFPS: Math.round(1000 / meanDt2) };
-		// Read bullet data into JS objects
-		for (let i = 0; i < NUM; i++) {
-			const object = [];
-			readBulletObject(i + 1, object);
-			data.objects[i] = object;
-		}
-		postMessage(data);
-		// if (timeToRestart()) resetPositions();
 	}
-
-	let interval = null;
-
-	onmessage = function(event) {
-		NUM = event.data;
-		NUMRANGE.length = 0;
-		while (NUMRANGE.length < NUM) NUMRANGE.push(NUMRANGE.length + 1);
-		frame = 1;
-		meanDt = meanDt2 = 0;
-		startUp();
-		const last = Date.now();
-
-		function mainLoop() {
-			const now = Date.now();
-			simulate(now - last);
-			last = now;
-		}
-		if (interval) clearInterval(interval);
-		interval = setInterval(mainLoop, 1000 / 60);
-	}
-
-});
+	return false;
+}
+*/

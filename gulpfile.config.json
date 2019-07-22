@@ -24,6 +24,17 @@
 				"minify": false
 			}, {
 				"input": [
+					"node_modules/ammo.js/builds/ammo.wasm.wasm"
+				],
+				"output": "docs/js"
+			}, {
+				"input": [
+					"src/js/physics/worker.wasm.js"
+				],
+				"output": "docs/js/worker.wasm.js",
+				"minify": false
+			}, {
+				"input": [
 					"node_modules/gsap/src/uncompressed/easing/EasePack.js",
 					"node_modules/gsap/src/uncompressed/TweenMax.js",
 					"node_modules/three/build/three.js",
@@ -38,6 +49,12 @@
 				],
 				"output": "docs/js/vrui-vendors.js",
 				"minify": true
+			}],
+			"resource": [{
+				"input": [
+					"node_modules/ammo.js/builds/ammo.wasm.wasm"
+				],
+				"output": "docs/js"
 			}]
 		}
 	},

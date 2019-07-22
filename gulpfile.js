@@ -28,7 +28,7 @@ const target = argv.target || 'browser';
 let configuration = getJson('./gulpfile.config.json');
 
 const compileTask = parallel(compileScss, compileJs, compileTs); // compilePartials, compileSnippets
-const bundleTask = parallel(bundleCss, bundleJs);
+const bundleTask = parallel(bundleCss, bundleJs, bundleResource);
 
 exports.compile = compileTask;
 exports.bundle = bundleTask;
@@ -249,6 +249,14 @@ function bundleJs(done) {
 	return tasks.length ? parallel(...tasks)(done) : done();
 }
 
+function bundleResource(done) {
+	const items = getResources();
+	const tasks = items.map(item => function itemTask(done) {
+		return doResourceBundle(item);
+	});
+	return tasks.length ? parallel(...tasks)(done) : done();
+}
+
 function doCssBundle(item) {
 	const skip = item.input.length === 1 && item.input[0] === item.output;
 	return src(item.input, { base: '.', allowEmpty: true, sourcemaps: true })
@@ -277,6 +285,16 @@ function doJsBundle(item) {
 		.pipe(tfsCheckout(!item.minify))
 		.pipe(gulpif(item.minify, dest('.', { sourcemaps: '.' })))
 		.pipe(filter('**/*.js'));
+}
+
+function doResourceBundle(item) {
+	const skip = item.input.length === 1 && item.input[0] === item.output;
+	return src(item.input, { base: '.', allowEmpty: true, sourcemaps: false })
+		.pipe(plumber())
+		.pipe(rename({ dirname: item.output }))
+		.pipe(gulpif(!skip, dest('.')))
+		.pipe(tfsCheckout(skip))
+		.on('end', () => logger.log('bundle', item.output));
 }
 
 // TFS
@@ -333,6 +351,12 @@ function watchTask(done) {
 			return doJsBundle(item);
 		}).on('change', logWatch);
 	});
+	// resource
+	const resourceWatches = getResources().map((item) => {
+		return watch(item.input, function bundleResource(done) {
+			return doResourceBundle(item);
+		}).on('change', logWatch);
+	});
 
 	// CONFIG
 	const configWatch = watch('./gulpfile.config.json', function config(done) {
@@ -340,7 +364,7 @@ function watchTask(done) {
 		return series(compileTask, bundleTask, watchTask)(done);
 	}).on('change', logWatch);
 
-	watchers = [].concat([scssWatch, jsWatch, tsWatch], cssWatches, jsWatches, [configWatch]);
+	watchers = [].concat([scssWatch, jsWatch, tsWatch], cssWatches, jsWatches, resourceWatches, [configWatch]);
 	// watch('./src/artisan/**/*.html', ['compile:partials']).on('change', logWatch);
 	// watch('./src/snippets/**/*.glsl', ['compile:snippets']).on('change', logWatch);
 	done();
@@ -385,8 +409,21 @@ function getBundles(ext) {
 	const options = configuration.targets[target];
 	if (options) {
 		return options.bundle.filter((item) => {
-			return new RegExp(`${ext}$`).test(item.output);
+			if (ext && item.output) {
+				return new RegExp(`${ext}$`).test(item.output);
+			} else {
+				return ext === 'resource' && !item.output;
+			}
 		});
+	} else {
+		return [];
+	}
+}
+
+function getResources() {
+	const options = configuration.targets[target];
+	if (options) {
+		return options.resource || [];
 	} else {
 		return [];
 	}

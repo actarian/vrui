@@ -1,39 +1,84 @@
+/* jshint esversion: 6 */
+
 import Emittable from "../interactive/emittable";
 
 export default class PhysicsWorker extends Emittable {
 
 	constructor() {
 		super();
-		const worker = this.worker = new Worker('worker.wasm.js');
-		worker.onmessage = (data) => {
-			this.emit('data', data);
-		}
+		this.meshes = [];
+		const worker = this.worker = new Worker('./js/worker.wasm.js');
+		worker.onmessage = (event) => {
+			const items = event.data;
+			if (items) {
+				const meshes = this.meshes;
+				for (let i = 0; i < items.length; i++) {
+					const item = items[i];
+					const mesh = meshes[i];
+					if (mesh && !mesh.freezed) {
+						mesh.position.set(item.position.x, item.position.y, item.position.z);
+						mesh.quaternion.set(item.quaternion.x, item.quaternion.y, item.quaternion.z, item.quaternion.w);
+						if (mesh.userData.respawn) {
+							mesh.userData.respawn(item);
+						}
+						/*
+						if (item.isActive) {
+							console.log(item);
+						}
+						*/
+					}
+				}
+			}
+			this.emit('items', items);
+		};
 		this.emit('init');
+	}
+
+	update(delta) {
+		// noop
+	}
+
+	remove(mesh) {
+		const index = this.meshes.indexOf(mesh);
+		if (index !== -1) {
+			const data = {
+				action: 'remove',
+				id: mesh.id,
+			};
+			this.worker.postMessage(data);
+		}
 	}
 
 	addBox(mesh, size, mass = 0, linearVelocity = null, angularVelocity = null) {
 		const data = {
 			action: 'addBox',
 			id: mesh.id,
-			position: mesh.position,
-			quaternion: mesh.quaternion,
+			position: { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z },
+			quaternion: { x: mesh.quaternion.x, y: mesh.quaternion.y, z: mesh.quaternion.z, w: mesh.quaternion.w },
 			size: size,
 			mass: mass,
 			linearVelocity: linearVelocity,
 			angularVelocity: angularVelocity,
-		}
+		};
 		this.worker.postMessage(data);
+		this.meshes.push(mesh);
 	}
 
-	remove(mesh) {
+	addSphere(mesh, radius, mass = 1, linearVelocity = null, angularVelocity = null) {
 		const data = {
-			action: 'remove',
+			action: 'addSphere',
 			id: mesh.id,
-		}
+			position: { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z },
+			quaternion: { x: mesh.quaternion.x, y: mesh.quaternion.y, z: mesh.quaternion.z, w: mesh.quaternion.w },
+			radius: radius,
+			mass: mass,
+			linearVelocity: linearVelocity,
+			angularVelocity: angularVelocity,
+		};
 		this.worker.postMessage(data);
+		this.meshes.push(mesh);
 	}
 
-	update(delta) {}
 }
 
 /*
