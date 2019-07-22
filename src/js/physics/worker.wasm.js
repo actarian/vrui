@@ -61,8 +61,11 @@ Ammo().then((Ammo) => {
 		}
 		world.addRigidBody(body);
 		data.sx = body.sx;
-		ITEMS.push(data);
-		BODIES[body.sx] = body;
+		if (mass > 0) {
+			// dynamic body
+			ITEMS.push(data);
+			BODIES[body.sx] = body;
+		}
 		return body;
 	}
 
@@ -92,8 +95,11 @@ Ammo().then((Ammo) => {
 		}
 		world.addRigidBody(body);
 		data.sx = body.sx;
-		ITEMS.push(data);
-		BODIES[body.sx] = body;
+		if (mass > 0) {
+			// dynamic body
+			ITEMS.push(data);
+			BODIES[body.sx] = body;
+		}
 		return body;
 	}
 
@@ -163,6 +169,16 @@ Ammo().then((Ammo) => {
 			const overallFps = Math.round(1000 / overallFps_);
 		}
 
+		// const p = (typeof performance === 'undefined' ? Date : performance);
+
+		let getTick = typeof performance === 'undefined' ?
+			function() {
+				return Date.now();
+			} :
+			function() {
+				return Math.floor(performance.now() * 100000000);
+			}
+
 		let context = this;
 
 		function loop() {
@@ -170,7 +186,7 @@ Ammo().then((Ammo) => {
 			stepSimulation(now - last);
 			// getFPS(now - last);
 			last = now;
-			context.requestAnimationFrame(loop);
+			// context.requestAnimationFrame(loop);
 		}
 
 		/*
@@ -191,7 +207,7 @@ Ammo().then((Ammo) => {
 		if (interval) {
 			clearInterval(interval);
 		}
-		interval = setInterval(loop, 1000 / 25);
+		interval = setInterval(loop, 1000 / 60);
 
 	}
 
