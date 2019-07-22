@@ -6,7 +6,7 @@ export default class PhysicsWorker extends Emittable {
 
 	constructor() {
 		super();
-		this.meshes = [];
+		this.meshes = {};
 		const worker = this.worker = new Worker('./js/worker.wasm.js');
 		worker.onmessage = (event) => {
 			const items = event.data;
@@ -14,7 +14,7 @@ export default class PhysicsWorker extends Emittable {
 				const meshes = this.meshes;
 				for (let i = 0; i < items.length; i++) {
 					const item = items[i];
-					const mesh = meshes[i];
+					const mesh = meshes[item.id];
 					if (mesh && !mesh.freezed) {
 						mesh.position.set(item.position.x, item.position.y, item.position.z);
 						mesh.quaternion.set(item.quaternion.x, item.quaternion.y, item.quaternion.z, item.quaternion.w);
@@ -39,12 +39,12 @@ export default class PhysicsWorker extends Emittable {
 	}
 
 	remove(mesh) {
-		const index = this.meshes.indexOf(mesh);
-		if (index !== -1) {
+		if (this.meshes[mesh.id]) {
 			const data = {
 				action: 'remove',
 				id: mesh.id,
 			};
+			delete this.meshes[mesh.id];
 			this.worker.postMessage(data);
 		}
 	}
@@ -61,7 +61,7 @@ export default class PhysicsWorker extends Emittable {
 			angularVelocity: angularVelocity,
 		};
 		this.worker.postMessage(data);
-		this.meshes.push(mesh);
+		this.meshes[mesh.id] = mesh;
 	}
 
 	addSphere(mesh, radius, mass = 1, linearVelocity = null, angularVelocity = null) {
@@ -76,7 +76,7 @@ export default class PhysicsWorker extends Emittable {
 			angularVelocity: angularVelocity,
 		};
 		this.worker.postMessage(data);
-		this.meshes.push(mesh);
+		this.meshes[mesh.id] = mesh;
 	}
 
 }

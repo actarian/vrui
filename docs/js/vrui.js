@@ -8,9 +8,11 @@ exports.cm = cm;
 exports.mm = mm;
 exports.deg = deg;
 exports.addCube = addCube;
-exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TRIGGER_CUBES = exports.BOUNDING_BOX = exports.TEST_ENABLED = void 0;
+exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TRIGGER_CUBES = exports.BOUNDING_BOX = exports.TEST_ENABLED = exports.DEBUG = void 0;
 
 /* jshint esversion: 6 */
+var DEBUG = false;
+exports.DEBUG = DEBUG;
 var TEST_ENABLED = false;
 exports.TEST_ENABLED = TEST_ENABLED;
 var BOUNDING_BOX = false;
@@ -1205,7 +1207,7 @@ function (_Emittable) {
     _classCallCheck(this, PhysicsWorker);
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(PhysicsWorker).call(this));
-    _this.meshes = [];
+    _this.meshes = {};
     var worker = _this.worker = new Worker('./js/worker.wasm.js');
 
     worker.onmessage = function (event) {
@@ -1216,7 +1218,7 @@ function (_Emittable) {
 
         for (var i = 0; i < items.length; i++) {
           var item = items[i];
-          var mesh = meshes[i];
+          var mesh = meshes[item.id];
 
           if (mesh && !mesh.freezed) {
             mesh.position.set(item.position.x, item.position.y, item.position.z);
@@ -1250,13 +1252,12 @@ function (_Emittable) {
   }, {
     key: "remove",
     value: function remove(mesh) {
-      var index = this.meshes.indexOf(mesh);
-
-      if (index !== -1) {
+      if (this.meshes[mesh.id]) {
         var data = {
           action: 'remove',
           id: mesh.id
         };
+        delete this.meshes[mesh.id];
         this.worker.postMessage(data);
       }
     }
@@ -1286,7 +1287,7 @@ function (_Emittable) {
         angularVelocity: angularVelocity
       };
       this.worker.postMessage(data);
-      this.meshes.push(mesh);
+      this.meshes[mesh.id] = mesh;
     }
   }, {
     key: "addSphere",
@@ -1314,7 +1315,7 @@ function (_Emittable) {
         angularVelocity: angularVelocity
       };
       this.worker.postMessage(data);
-      this.meshes.push(mesh);
+      this.meshes[mesh.id] = mesh;
     }
   }]);
 
@@ -2995,13 +2996,17 @@ function (_Emittable) {
       element.style.position = 'absolute';
       element.style.bottom = '20px';
       element.style.padding = '12px 6px';
-      element.style.border = '1px solid #fff';
-      element.style.borderRadius = '4px';
       element.style.background = 'rgba(0,0,0,0.1)';
+      element.style.border = '1px solid #fff';
+      element.style.opacity = '0.5';
+      element.style.borderRadius = '4px';
+      element.style.background = '#E91E63';
+      element.style.border = 'none';
+      element.style.opacity = '1';
+      element.style.borderRadius = '20px';
       element.style.color = '#fff';
       element.style.font = 'normal 13px sans-serif';
       element.style.textAlign = 'center';
-      element.style.opacity = '0.5';
       element.style.outline = 'none';
       element.style.zIndex = '999';
       return element;
@@ -3373,8 +3378,8 @@ function () {
     value: function addFloor() {
       if (this.physics) {
         var floor = new THREE.Group();
-        floor.position.y = (0, _const.cm)(-20);
-        this.physics.addBox(floor, new THREE.Vector3(10, (0, _const.cm)(40), 10));
+        floor.position.y = -1;
+        this.physics.addBox(floor, new THREE.Vector3(10, 1, 10));
         return floor;
       }
     }
@@ -3382,7 +3387,7 @@ function () {
     key: "updateVelocity",
     value: function updateVelocity(controller) {
       if (controller) {
-        this.linearVelocity.copy(controller.linearVelocity).multiplyScalar(10);
+        this.linearVelocity.copy(controller.linearVelocity).multiplyScalar(40);
         this.angularVelocity.copy(controller.angularVelocity).multiplyScalar(10);
       }
     }
@@ -3477,11 +3482,13 @@ function () {
   }, {
     key: "addControllers",
     value: function addControllers(renderer, vr, scene) {
+      var _this3 = this;
+
       if (vr.mode !== _vr.VR_MODE.NONE || _const.TEST_ENABLED) {
         var cube0 = this.cube0;
         var cube1 = this.cube1;
         var controllers = new _controllers.default(renderer, scene, {
-          debug: true
+          debug: _const.DEBUG
         });
         controllers.on('press', function (button) {
           console.log('vrui.press', button.gamepad.hand, button.index);
@@ -3501,6 +3508,10 @@ function () {
             case _gamepads.GAMEPAD_HANDS.RIGHT:
               // 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
               break;
+          }
+
+          if (button.index === 3) {
+            _this3.toothbrush.onRespawn();
           }
         });
 
@@ -3753,7 +3764,7 @@ function () {
   }, {
     key: "addToothBrush",
     value: function addToothBrush() {
-      var _this3 = this;
+      var _this4 = this;
 
       var mesh = new _grabbable.default();
       mesh.defaultY = this.stand.position.y + (0, _const.cm)(50);
@@ -3770,27 +3781,27 @@ function () {
               case 'bubble':
                 // child.geometry.computeFaceNormals();
                 // child.geometry.computeVertexNormals(true);
-                child.material = _this3.materials.bodyPrimaryClear;
+                child.material = _this4.materials.bodyPrimaryClear;
                 mesh.body = child;
                 break;
 
               case 'body-secondary':
                 // child.geometry.computeFaceNormals();
                 // child.geometry.computeVertexNormals(true);
-                child.material = _this3.materials.bodySecondary;
+                child.material = _this4.materials.bodySecondary;
                 mesh.color = child;
                 break;
 
               case 'bristles-primary':
-                child.material = _this3.materials.bristlesPrimary;
+                child.material = _this4.materials.bristlesPrimary;
                 break;
 
               case 'bristles-secondary':
-                child.material = _this3.materials.bristlesSecondary;
+                child.material = _this4.materials.bristlesSecondary;
                 break;
 
               case 'logo':
-                child.material = _this3.materials.logoSilver;
+                child.material = _this4.materials.logoSilver;
                 mesh.logo = child;
                 break;
             }
@@ -3798,7 +3809,7 @@ function () {
         });
         mesh.add(object);
 
-        if (_this3.physics) {
+        if (_this4.physics) {
           var _box = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
 
           _box.setFromObject(object);
@@ -3807,8 +3818,8 @@ function () {
 
           mesh.userData.size = size;
 
-          if (_this3.physics) {
-            _this3.physics.addBox(mesh, size, 1);
+          if (_this4.physics) {
+            _this4.physics.addBox(mesh, size, 1);
           } // this.bodies.push(mesh);
 
         }
@@ -3818,8 +3829,8 @@ function () {
       });
       mesh.name = 'toothbrush';
       mesh.on('grab', function (controller) {
-        if (_this3.physics) {
-          _this3.physics.remove(mesh);
+        if (_this4.physics) {
+          _this4.physics.remove(mesh);
         }
 
         mesh.userData.speed = 0;
@@ -3846,7 +3857,7 @@ function () {
         });
       });
       mesh.on('release', function (controller) {
-        var target = _this3.scene;
+        var target = _this4.scene;
         var position = mesh.position.clone(); // new THREE.Vector3();
 
         var quaternion = mesh.parent.quaternion.clone();
@@ -3863,8 +3874,8 @@ function () {
           ease: Power2.easeInOut
         });
 
-        if (_this3.physics) {
-          _this3.physics.addBox(mesh, mesh.userData.size, 1, _this3.linearVelocity, _this3.angularVelocity);
+        if (_this4.physics) {
+          _this4.physics.addBox(mesh, mesh.userData.size, 1, _this4.linearVelocity, _this4.angularVelocity);
           /*
           this.bodies.push(mesh);
           body.setCollisionFlags(1); // 0 is static 1 dynamic 2 kinematic and state to 4:
@@ -3876,27 +3887,31 @@ function () {
         }
       });
 
+      mesh.onRespawn = function () {
+        if (_this4.physics) {
+          _this4.physics.remove(mesh);
+        }
+
+        mesh.parent.remove(mesh);
+        setTimeout(function () {
+          mesh.position.set(0, mesh.defaultY, (0, _const.cm)(-60));
+          mesh.rotation.set(0, 0, (0, _const.deg)(10));
+
+          _this4.scene.add(mesh);
+
+          if (_this4.physics) {
+            _this4.physics.addBox(mesh, mesh.userData.size, 1); // this.bodies.push(mesh);
+
+          }
+        }, 1000);
+      };
+
       mesh.userData.respawn = function (data) {
         if (mesh.position.y < (0, _const.cm)(10)) {
           // const linearVelocity = mesh.userData.body.getLinearVelocity();
           // if (linearVelocity.length() < 0.03) {
           if (data && data.speed < 0.03) {
-            if (_this3.physics) {
-              _this3.physics.remove(mesh);
-            }
-
-            mesh.parent.remove(mesh);
-            setTimeout(function () {
-              mesh.position.set(0, mesh.defaultY, (0, _const.cm)(-60));
-              mesh.rotation.set(0, 0, (0, _const.deg)(10));
-
-              _this3.scene.add(mesh);
-
-              if (_this3.physics) {
-                _this3.physics.addBox(mesh, mesh.userData.size, 1); // this.bodies.push(mesh);
-
-              }
-            }, 1000);
+            mesh.onRespawn();
           }
         }
       };
@@ -3908,7 +3923,7 @@ function () {
           mesh.position.set(0, mesh.defaultY, (0, _const.cm)(-60));
           mesh.rotation.set(0, 0, 0);
 
-          _this3.scene.add(mesh);
+          _this4.scene.add(mesh);
         }, 1000);
       };
 
@@ -3955,7 +3970,7 @@ function () {
   }, {
     key: "addToothBrush__",
     value: function addToothBrush__() {
-      var _this4 = this;
+      var _this5 = this;
 
       // const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-11.png');
@@ -4002,7 +4017,7 @@ function () {
         // console.log(target.name);
       });
       mesh.on('release', function (controller) {
-        var target = _this4.scene; // target.updateMatrixWorld();
+        var target = _this5.scene; // target.updateMatrixWorld();
         // mesh.parent.updateMatrixWorld();
 
         var position = mesh.position.clone(); // new THREE.Vector3();
@@ -4043,7 +4058,7 @@ function () {
           mesh.position.set(0, (0, _const.cm)(117), (0, _const.cm)(-60));
           mesh.rotation.set(0, 0, 0);
 
-          _this4.scene.add(mesh); // console.log('onRespawn.scened');
+          _this5.scene.add(mesh); // console.log('onRespawn.scened');
 
         }, 1000); // console.log('onRespawn');
       };
@@ -4232,11 +4247,11 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this5 = this;
+      var _this6 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this5.render();
+        _this6.render();
       });
     }
   }]);

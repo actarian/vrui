@@ -7,8 +7,9 @@ importScripts('./ammo.wasm.js');
 Ammo().then((Ammo) => {
 
 	const transform = new Ammo.btTransform(); // taking this out of readBulletObject reduces the leaking
+	const MARGIN = 0.05;
 	const ITEMS = [];
-	const BODIES = [];
+	const BODIES = {};
 
 	// Bullet-interfacing code
 	const configuration = new Ammo.btDefaultCollisionConfiguration();
@@ -23,11 +24,11 @@ Ammo().then((Ammo) => {
 		const item = ITEMS.find(x => x.id === data.id);
 		const index = ITEMS.indexOf(item);
 		if (index !== -1) {
-			body = BODIES[index];
 			ITEMS.splice(index, 1);
-			BODIES.splice(index, 1);
+			const body = BODIES[item.sx];
 			if (body) {
 				world.removeRigidBody(body);
+				delete BODIES[item.sx];
 			}
 		}
 		return body;
@@ -45,9 +46,9 @@ Ammo().then((Ammo) => {
 		transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
 		transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
 		const state = new Ammo.btDefaultMotionState(transform);
-		const shape = new Ammo.btBoxShape(new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5));
+		const shape = new Ammo.btBoxShape(new Ammo.btVector3(size.x, size.y, size.z));
 		// const shape = new Ammo.btSphereShape(radius);
-		shape.setMargin(0.05);
+		shape.setMargin(MARGIN);
 		const inertia = new Ammo.btVector3(0, 0, 0);
 		shape.calculateLocalInertia(mass, inertia);
 		const info = new Ammo.btRigidBodyConstructionInfo(mass, state, shape, inertia);
@@ -59,8 +60,9 @@ Ammo().then((Ammo) => {
 			body.setAngularVelocity(new Ammo.btVector3(angularVelocity.x, angularVelocity.y, angularVelocity.z));
 		}
 		world.addRigidBody(body);
+		data.sx = body.sx;
 		ITEMS.push(data);
-		BODIES.push(body);
+		BODIES[body.sx] = body;
 		return body;
 	}
 
@@ -77,7 +79,7 @@ Ammo().then((Ammo) => {
 		transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
 		const state = new Ammo.btDefaultMotionState(transform);
 		const shape = new Ammo.btSphereShape(radius);
-		shape.setMargin(0.05);
+		shape.setMargin(MARGIN);
 		const inertia = new Ammo.btVector3(0, 0, 0);
 		shape.calculateLocalInertia(mass, inertia);
 		const info = new Ammo.btRigidBodyConstructionInfo(mass, state, shape, inertia);
@@ -89,8 +91,9 @@ Ammo().then((Ammo) => {
 			body.setAngularVelocity(new Ammo.btVector3(angularVelocity.x, angularVelocity.y, angularVelocity.z));
 		}
 		world.addRigidBody(body);
+		data.sx = body.sx;
 		ITEMS.push(data);
-		BODIES.push(body);
+		BODIES[body.sx] = body;
 		return body;
 	}
 
@@ -113,26 +116,35 @@ Ammo().then((Ammo) => {
 	onmessage = parseActions;
 
 	function stepSimulation(delta) {
-		delta = delta || 1;
+		if (!delta) {
+			return;
+		}
+		// delta = delta || 1;
 		world.stepSimulation(delta, 2);
+		let active = false;
 		for (let i = 0; i < ITEMS.length; i++) {
 			const item = ITEMS[i];
-			const body = BODIES[i];
-			body.getMotionState().getWorldTransform(transform);
-			const origin = transform.getOrigin();
-			item.position.x = origin.x();
-			item.position.y = origin.y();
-			item.position.z = origin.z();
-			const rotation = transform.getRotation();
-			item.quaternion.x = rotation.x();
-			item.quaternion.y = rotation.y();
-			item.quaternion.z = rotation.z();
-			item.quaternion.w = rotation.w();
-			const velocity = body.getLinearVelocity();
-			item.speed = velocity.length();
-			item.isActive = body.isActive();
+			const body = BODIES[item.sx];
+			if (body.isActive()) {
+				body.getMotionState().getWorldTransform(transform);
+				const origin = transform.getOrigin();
+				item.position.x = origin.x();
+				item.position.y = origin.y();
+				item.position.z = origin.z();
+				const rotation = transform.getRotation();
+				item.quaternion.x = rotation.x();
+				item.quaternion.y = rotation.y();
+				item.quaternion.z = rotation.z();
+				item.quaternion.w = rotation.w();
+				// item.isActive = body.isActive();
+				const velocity = body.getLinearVelocity();
+				item.speed = velocity.length();
+				active = true;
+			}
 		}
-		postMessage(ITEMS);
+		if (active) {
+			postMessage(ITEMS);
+		}
 	}
 
 	function start() {
@@ -151,18 +163,67 @@ Ammo().then((Ammo) => {
 			const overallFps = Math.round(1000 / overallFps_);
 		}
 
+		let context = this;
+
 		function loop() {
 			const now = Date.now();
 			stepSimulation(now - last);
 			// getFPS(now - last);
 			last = now;
+			context.requestAnimationFrame(loop);
 		}
+
+		/*
+		if (navigator.getVRDisplays) {
+			navigator.getVRDisplays().then((displays) => {
+				if (displays.length > 0) {
+					context = displays[0];
+					loop();
+				}
+			}).catch((e) => {
+				console.log('error', e);
+			});
+		} else {
+			loop();
+		}
+		*/
 
 		if (interval) {
 			clearInterval(interval);
 		}
+		interval = setInterval(loop, 1000 / 25);
 
-		interval = setInterval(loop, 1000 / 60);
+	}
+
+	function move(data) {
+		/*
+	btTransform trans = _body->getWorldTransform();
+        trans.setOrigin(btVector3(position.x, position.y, position.z));
+		_body->setWorldTransform(trans);
+
+		void preTickCallback(btDynamicsWorld *world, btScalar timeStep) {
+world->clearForces();
+world->applyGravity();
+
+myRigidbody->applyForce(someforce);
+
+myKinematicBody->setWorldTransform(newposition);
+myKinematicBody->saveKinematicState(timestep);
+
+}
+
+
+boxRb = createRigidBody(0, startTransform, colShape);
+ boxRb->setFlags(boxRb->getFlags() | btCollisionObject::CollisionFlags::CF_KINEMATIC_OBJECT);
+ boxRb->setActivationState(DISABLE_DEACTIVATION);
+Here how I move each tick:
+
+btTransform t( boxRb->getWorldTransform() );
+t.setOrigin(t.getOrigin() + btVector3(10, 0, 0) * deltaTime);
+boxRb->setWorldTransform(t);
+boxRb->getMotionState()->setWorldTransform(t);
+cout << "Current velocity: " << boxRb->getLinearVelocity().length() << endl;
+		*/
 	}
 
 	start();

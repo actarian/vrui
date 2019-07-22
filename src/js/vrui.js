@@ -2,9 +2,8 @@
 
 // import * as THREE from 'three';
 // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-// import * as Ammo from 'ammo.js';
 
-import { BOUNDING_BOX, cm, deg, mm, TEST_ENABLED, TRIGGER_CUBES } from './const';
+import { BOUNDING_BOX, cm, DEBUG, deg, mm, TEST_ENABLED, TRIGGER_CUBES } from './const';
 import RoundBoxGeometry from './geometries/round-box.geometry';
 import FreezableGroup from './interactive/freezable.group';
 import FreezableMesh from './interactive/freezable.mesh';
@@ -95,15 +94,15 @@ class Vrui {
 	addFloor() {
 		if (this.physics) {
 			const floor = new THREE.Group();
-			floor.position.y = cm(-20);
-			this.physics.addBox(floor, new THREE.Vector3(10, cm(40), 10));
+			floor.position.y = -1;
+			this.physics.addBox(floor, new THREE.Vector3(10, 1, 10));
 			return floor;
 		}
 	}
 
 	updateVelocity(controller) {
 		if (controller) {
-			this.linearVelocity.copy(controller.linearVelocity).multiplyScalar(10);
+			this.linearVelocity.copy(controller.linearVelocity).multiplyScalar(40);
 			this.angularVelocity.copy(controller.angularVelocity).multiplyScalar(10);
 		}
 	}
@@ -186,7 +185,7 @@ class Vrui {
 			const cube0 = this.cube0;
 			const cube1 = this.cube1;
 			const controllers = new Controllers(renderer, scene, {
-				debug: true
+				debug: DEBUG
 			});
 			controllers.on('press', (button) => {
 				console.log('vrui.press', button.gamepad.hand, button.index);
@@ -203,6 +202,9 @@ class Vrui {
 					case GAMEPAD_HANDS.RIGHT:
 						// 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
 						break;
+				}
+				if (button.index === 3) {
+					this.toothbrush.onRespawn();
 				}
 			});
 			if (TRIGGER_CUBES) {
@@ -542,24 +544,27 @@ class Vrui {
 				mesh.falling = true;
 			}
 		});
+		mesh.onRespawn = () => {
+			if (this.physics) {
+				this.physics.remove(mesh);
+			}
+			mesh.parent.remove(mesh);
+			setTimeout(() => {
+				mesh.position.set(0, mesh.defaultY, cm(-60));
+				mesh.rotation.set(0, 0, deg(10));
+				this.scene.add(mesh);
+				if (this.physics) {
+					this.physics.addBox(mesh, mesh.userData.size, 1);
+					// this.bodies.push(mesh);
+				}
+			}, 1000);
+		};
 		mesh.userData.respawn = (data) => {
 			if (mesh.position.y < cm(10)) {
 				// const linearVelocity = mesh.userData.body.getLinearVelocity();
 				// if (linearVelocity.length() < 0.03) {
 				if (data && data.speed < 0.03) {
-					if (this.physics) {
-						this.physics.remove(mesh);
-					}
-					mesh.parent.remove(mesh);
-					setTimeout(() => {
-						mesh.position.set(0, mesh.defaultY, cm(-60));
-						mesh.rotation.set(0, 0, deg(10));
-						this.scene.add(mesh);
-						if (this.physics) {
-							this.physics.addBox(mesh, mesh.userData.size, 1);
-							// this.bodies.push(mesh);
-						}
-					}, 1000);
+					mesh.onRespawn();
 				}
 			}
 		};

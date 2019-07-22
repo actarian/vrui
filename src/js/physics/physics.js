@@ -2,6 +2,8 @@
 
 import Emittable from '../interactive/emittable';
 
+const MARGIN = 0.05;
+
 export default class Physics extends Emittable {
 
 	constructor() {
@@ -27,9 +29,12 @@ export default class Physics extends Emittable {
 	}
 
 	update(delta) {
+		if (!delta) {
+			return;
+		}
 		const transform = this.transform;
 		const world = this.world;
-		world.stepSimulation(delta, 2);
+		world.stepSimulation(delta, 10);
 		const meshes = this.meshes;
 		for (let i = 0; i < meshes.length; i++) {
 			const mesh = meshes[i];
@@ -44,7 +49,7 @@ export default class Physics extends Emittable {
 					mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
 					const velocity = body.getLinearVelocity();
 					item.speed = velocity.length();
-					mesh.isActive = body.isActive();
+					// mesh.isActive = body.isActive();
 					if (mesh.userData.respawn) {
 						mesh.userData.respawn(mesh);
 					}
@@ -73,7 +78,7 @@ export default class Physics extends Emittable {
 		transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
 		const state = new Ammo.btDefaultMotionState(transform);
 		const shape = new Ammo.btBoxShape(new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5));
-		shape.setMargin(0.05);
+		shape.setMargin(MARGIN);
 		const inertia = new Ammo.btVector3(0, 0, 0);
 		shape.calculateLocalInertia(mass, inertia);
 		const info = new Ammo.btRigidBodyConstructionInfo(mass, state, shape, inertia);
@@ -99,7 +104,7 @@ export default class Physics extends Emittable {
 		transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
 		const state = new Ammo.btDefaultMotionState(transform);
 		const sphere = new Ammo.btSphereShape(radius);
-		sphere.setMargin(0.05);
+		sphere.setMargin(MARGIN);
 		const inertia = new Ammo.btVector3(0, 0, 0);
 		sphere.calculateLocalInertia(mass, inertia);
 		const info = new Ammo.btRigidBodyConstructionInfo(mass, state, sphere, inertia);
