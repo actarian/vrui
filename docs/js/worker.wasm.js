@@ -6,7 +6,6 @@ importScripts('./ammo.wasm.js');
 
 Ammo().then((Ammo) => {
 
-	const transform = new Ammo.btTransform(); // taking this out of readBulletObject reduces the leaking
 	const MARGIN = 0.05;
 	const ITEMS = [];
 	const BODIES = {};
@@ -46,7 +45,7 @@ Ammo().then((Ammo) => {
 		transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
 		transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
 		const state = new Ammo.btDefaultMotionState(transform);
-		const shape = new Ammo.btBoxShape(new Ammo.btVector3(size.x, size.y, size.z));
+		const shape = new Ammo.btBoxShape(new Ammo.btVector3(size.x * 0.5, size.y * 0.5, size.z * 0.5));
 		// const shape = new Ammo.btSphereShape(radius);
 		shape.setMargin(MARGIN);
 		const inertia = new Ammo.btVector3(0, 0, 0);
@@ -107,6 +106,9 @@ Ammo().then((Ammo) => {
 		let body;
 		const data = event.data;
 		switch (data.action) {
+			case 'stepSimulation':
+				stepSimulation(data.delta);
+				break;
 			case 'remove':
 				body = remove(data);
 				break;
@@ -121,19 +123,33 @@ Ammo().then((Ammo) => {
 
 	onmessage = parseActions;
 
+	const transform = new Ammo.btTransform(); // taking this out of readBulletObject reduces the leaking
+	let i, active; // , tx, ty, tz, dx, dy, dz;
+
 	function stepSimulation(delta) {
 		if (!delta) {
 			return;
 		}
 		// delta = delta || 1;
-		world.stepSimulation(delta, 2);
-		let active = false;
-		for (let i = 0; i < ITEMS.length; i++) {
+		world.stepSimulation(delta, 1);
+		active = false;
+		for (i = 0; i < ITEMS.length; i++) {
 			const item = ITEMS[i];
 			const body = BODIES[item.sx];
 			if (body.isActive()) {
 				body.getMotionState().getWorldTransform(transform);
 				const origin = transform.getOrigin();
+				/*
+				tx = origin.x();
+				ty = origin.y();
+				tz = origin.z();
+				dx = tx - item.position.x;
+				dy = ty - item.position.y;
+				dz = tz - item.position.z;
+				item.position.x = tx;
+				item.position.y = ty;
+				item.position.z = tz;
+				*/
 				item.position.x = origin.x();
 				item.position.y = origin.y();
 				item.position.z = origin.z();
@@ -171,18 +187,16 @@ Ammo().then((Ammo) => {
 
 		// const p = (typeof performance === 'undefined' ? Date : performance);
 
-		let getTick = typeof performance === 'undefined' ?
-			function() {
-				return Date.now();
-			} :
-			function() {
-				return Math.floor(performance.now() * 100000000);
-			}
+		let getTick = typeof performance === 'undefined' ? function() {
+			return Date.now();
+		} : function() {
+			return Math.floor(performance.now() * 100000000);
+		};
 
 		let context = this;
 
 		function loop() {
-			const now = Date.now();
+			const now = getTick();
 			stepSimulation(now - last);
 			// getFPS(now - last);
 			last = now;
@@ -210,6 +224,8 @@ Ammo().then((Ammo) => {
 		interval = setInterval(loop, 1000 / 60);
 
 	}
+
+	// start();
 
 	function move(data) {
 		/*
@@ -241,8 +257,6 @@ boxRb->getMotionState()->setWorldTransform(t);
 cout << "Current velocity: " << boxRb->getLinearVelocity().length() << endl;
 		*/
 	}
-
-	start();
 
 });
 

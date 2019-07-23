@@ -7,6 +7,7 @@ export default class PhysicsWorker extends Emittable {
 	constructor() {
 		super();
 		this.meshes = {};
+		this.data = { action: 'stepSimulation', delta: 0 };
 		const worker = this.worker = new Worker('./js/worker.wasm.js');
 		worker.onmessage = (event) => {
 			const items = event.data;
@@ -36,6 +37,8 @@ export default class PhysicsWorker extends Emittable {
 
 	update(delta) {
 		// noop
+		this.data.delta = delta;
+		this.worker.postMessage(this.data);
 	}
 
 	remove(mesh) {
@@ -49,7 +52,7 @@ export default class PhysicsWorker extends Emittable {
 		}
 	}
 
-	addBox(mesh, size, mass = 0, linearVelocity = null, angularVelocity = null) {
+	addBox(mesh, size, mass, linearVelocity, angularVelocity) {
 		const data = {
 			action: 'addBox',
 			id: mesh.id,
@@ -64,7 +67,7 @@ export default class PhysicsWorker extends Emittable {
 		this.meshes[mesh.id] = mesh;
 	}
 
-	addSphere(mesh, radius, mass = 1, linearVelocity = null, angularVelocity = null) {
+	addSphere(mesh, radius, mass, linearVelocity, angularVelocity) {
 		const data = {
 			action: 'addSphere',
 			id: mesh.id,

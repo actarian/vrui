@@ -77,7 +77,7 @@ function compileJs(done) {
 							["@babel/preset-env", {
 									targets: {
 										chrome: '58',
-										ie: '11'
+										// ie: '11'
 									},
 							}]
 						],
@@ -122,7 +122,7 @@ function compileTs(done) {
 			["@babel/preset-env", {
 				targets: {
 					chrome: '58',
-					ie: '11'
+					// ie: '11'
 				},
 			}],
 		],
