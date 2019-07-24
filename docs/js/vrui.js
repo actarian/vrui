@@ -13,7 +13,7 @@ exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_R
 /* jshint esversion: 6 */
 const DEBUG = false;
 exports.DEBUG = DEBUG;
-const TEST_ENABLED = false;
+const TEST_ENABLED = true;
 exports.TEST_ENABLED = TEST_ENABLED;
 const BOUNDING_BOX = false;
 exports.BOUNDING_BOX = BOUNDING_BOX;
@@ -912,11 +912,13 @@ class PhysicsWorker extends _emittable.default {
       delta: 0
     };
     const worker = this.worker = new Worker('./js/worker.wasm.js');
+    const debugInfo = document.querySelector('.debug__info');
 
     worker.onmessage = event => {
       const items = event.data;
 
       if (items) {
+        // debugInfo.innerHTML = items.fps;
         const meshes = this.meshes;
 
         for (let i = 0; i < items.length; i++) {
@@ -946,10 +948,12 @@ class PhysicsWorker extends _emittable.default {
     this.emit('init');
   }
 
-  update(delta) {
-    // noop
+  update(delta) {// noop
+
+    /*
     this.data.delta = delta;
     this.worker.postMessage(this.data);
+    */
   }
 
   remove(mesh) {
@@ -2771,7 +2775,7 @@ class Vrui {
   addFloor() {
     if (this.physics) {
       const floor = new THREE.Group();
-      floor.position.y = -1;
+      floor.position.y = -0.5;
       this.physics.addBox(floor, new THREE.Vector3(10, 1, 10));
       return floor;
     }
@@ -3273,62 +3277,61 @@ class Vrui {
     };
 
     mesh.userData.respawn = data => {
-      if (mesh.position.y < (0, _const.cm)(10)) {
+      if (mesh.position.y < (0, _const.cm)(30)) {
         // const linearVelocity = mesh.userData.body.getLinearVelocity();
         // if (linearVelocity.length() < 0.03) {
-        if (data && data.speed < 0.03) {
+        if (data && data.speed < 0.3) {
           mesh.onRespawn();
         }
       }
     };
-
+    /*
     const onRespawn = () => {
-      mesh.parent.remove(mesh);
-      mesh.falling = false;
-      setTimeout(() => {
-        mesh.position.set(0, mesh.defaultY, (0, _const.cm)(-60));
-        mesh.rotation.set(0, 0, 0);
-        this.scene.add(mesh);
-      }, 1000);
+    	mesh.parent.remove(mesh);
+    	mesh.falling = false;
+    	setTimeout(() => {
+    		mesh.position.set(0, mesh.defaultY, cm(-60));
+    		mesh.rotation.set(0, 0, 0);
+    		this.scene.add(mesh);
+    	}, 1000);
     };
-
     const onFallDown = () => {
-      if (mesh.falling) {
-        const speed = mesh.userData.speed || (0, _const.mm)(0.1);
-        let tx = mesh.position.x;
-        let ty = mesh.position.y;
-        let tz = mesh.position.z;
-        let rx = mesh.rotation.x;
-        let ry = mesh.rotation.y;
-        let rz = mesh.rotation.z;
-        ty -= speed;
-        rx += (0 - rx) / 1000 * speed;
-        ry += (0 - ry) / 1000 * speed;
-        rz += (0, _const.deg)(0.05) * speed;
-        mesh.position.set(tx, ty, tz);
-        mesh.rotation.set(rx, ry, rz);
-        mesh.userData.speed = speed * 1.1;
-
-        if (ty < (0, _const.cm)(-30)) {
-          onRespawn();
-        }
-      }
+    	if (mesh.falling) {
+    		const speed = mesh.userData.speed || mm(0.1);
+    		let tx = mesh.position.x;
+    		let ty = mesh.position.y;
+    		let tz = mesh.position.z;
+    		let rx = mesh.rotation.x;
+    		let ry = mesh.rotation.y;
+    		let rz = mesh.rotation.z;
+    		ty -= speed;
+    		rx += (0 - rx) / 1000 * speed;
+    		ry += (0 - ry) / 1000 * speed;
+    		rz += deg(0.05) * speed;
+    		mesh.position.set(tx, ty, tz);
+    		mesh.rotation.set(rx, ry, rz);
+    		mesh.userData.speed = speed * 1.1;
+    		if (ty < cm(-30)) {
+    			onRespawn();
+    		}
+    	}
     };
+    */
 
+    /*
     let box;
-
-    if (_const.BOUNDING_BOX) {
-      box = new THREE.BoxHelper(mesh, 0x0000ff);
-      this.scene.add(box);
+    if (BOUNDING_BOX) {
+    	box = new THREE.BoxHelper(mesh, 0x0000ff);
+    	this.scene.add(box);
     }
-
     mesh.onUpdate = (renderer, scene, camera, object, delta, time, tick) => {
-      if (box && !mesh.freezed) {
-        box.update();
-      }
-
-      onFallDown();
+    	if (box && !mesh.freezed) {
+    		box.update();
+    	}
+    	onFallDown();
     };
+    */
+
 
     return mesh;
   }

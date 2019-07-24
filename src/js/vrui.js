@@ -94,7 +94,7 @@ class Vrui {
 	addFloor() {
 		if (this.physics) {
 			const floor = new THREE.Group();
-			floor.position.y = -1;
+			floor.position.y = -0.5;
 			this.physics.addBox(floor, new THREE.Vector3(10, 1, 10));
 			return floor;
 		}
@@ -560,14 +560,15 @@ class Vrui {
 			}, 1000);
 		};
 		mesh.userData.respawn = (data) => {
-			if (mesh.position.y < cm(10)) {
+			if (mesh.position.y < cm(30)) {
 				// const linearVelocity = mesh.userData.body.getLinearVelocity();
 				// if (linearVelocity.length() < 0.03) {
-				if (data && data.speed < 0.03) {
+				if (data && data.speed < 0.3) {
 					mesh.onRespawn();
 				}
 			}
 		};
+		/*
 		const onRespawn = () => {
 			mesh.parent.remove(mesh);
 			mesh.falling = false;
@@ -598,6 +599,8 @@ class Vrui {
 				}
 			}
 		};
+		*/
+		/*
 		let box;
 		if (BOUNDING_BOX) {
 			box = new THREE.BoxHelper(mesh, 0x0000ff);
@@ -609,6 +612,7 @@ class Vrui {
 			}
 			onFallDown();
 		};
+		*/
 		return mesh;
 	}
 

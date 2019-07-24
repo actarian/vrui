@@ -9,9 +9,11 @@ export default class PhysicsWorker extends Emittable {
 		this.meshes = {};
 		this.data = { action: 'stepSimulation', delta: 0 };
 		const worker = this.worker = new Worker('./js/worker.wasm.js');
+		const debugInfo = document.querySelector('.debug__info');
 		worker.onmessage = (event) => {
 			const items = event.data;
 			if (items) {
+				// debugInfo.innerHTML = items.fps;
 				const meshes = this.meshes;
 				for (let i = 0; i < items.length; i++) {
 					const item = items[i];
@@ -37,8 +39,10 @@ export default class PhysicsWorker extends Emittable {
 
 	update(delta) {
 		// noop
+		/*
 		this.data.delta = delta;
 		this.worker.postMessage(this.data);
+		*/
 	}
 
 	remove(mesh) {

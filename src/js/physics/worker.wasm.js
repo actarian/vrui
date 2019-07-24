@@ -6,7 +6,7 @@ importScripts('./ammo.wasm.js');
 
 Ammo().then((Ammo) => {
 
-	const MARGIN = 0.05;
+	const MARGIN = 0.001;
 	const ITEMS = [];
 	const BODIES = {};
 
@@ -165,40 +165,44 @@ Ammo().then((Ammo) => {
 			}
 		}
 		if (active) {
+			ITEMS.fps = this.fps;
 			postMessage(ITEMS);
 		}
 	}
 
+	let getTick = typeof performance === 'undefined' ? function() {
+		return Date.now();
+	} : function() {
+		return performance.now();
+	};
+
 	function start() {
 		let overallFps_ = 0;
-		let fps_ = 0;
 		let tick = 1;
-		let last = Date.now();
+		let fps_ = 0;
+		let last = getTick();
 		let interval = null;
 
 		function getFPS(delta) {
+			/*
 			const overallStep_ = 1 / tick++;
 			overallFps_ = overallStep_ * delta + (1 - overallStep_) * overallFps_;
+			const overallFps = Math.round(1000 / overallFps_);
+			this.overallFps = overallFps;
+			*/
 			const step_ = fps_ > 0 ? Math.min(0.1, delta / 1000) : 0.1; // first run
 			fps_ = step_ * delta + (1 - step_) * fps_;
 			const fps = Math.round(1000 / fps_);
-			const overallFps = Math.round(1000 / overallFps_);
+			this.fps = fps;
 		}
 
-		// const p = (typeof performance === 'undefined' ? Date : performance);
-
-		let getTick = typeof performance === 'undefined' ? function() {
-			return Date.now();
-		} : function() {
-			return Math.floor(performance.now() * 100000000);
-		};
-
-		let context = this;
+		// let context = this;
 
 		function loop() {
 			const now = getTick();
-			stepSimulation(now - last);
-			// getFPS(now - last);
+			const delta = now - last;
+			// getFPS(delta);
+			stepSimulation(delta);
 			last = now;
 			// context.requestAnimationFrame(loop);
 		}
@@ -221,11 +225,11 @@ Ammo().then((Ammo) => {
 		if (interval) {
 			clearInterval(interval);
 		}
-		interval = setInterval(loop, 1000 / 60);
+		interval = setInterval(loop, 1000 / 120);
 
 	}
 
-	// start();
+	start();
 
 	function move(data) {
 		/*
