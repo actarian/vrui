@@ -2,7 +2,7 @@
 
 const Module = { TOTAL_MEMORY: 256 * 1024 * 1024 };
 
-importScripts('./ammo.wasm.js');
+importScripts('./ammo.js');
 
 Ammo().then((Ammo) => {
 

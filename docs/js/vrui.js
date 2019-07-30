@@ -13,7 +13,7 @@ exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_R
 /* jshint esversion: 6 */
 const DEBUG = false;
 exports.DEBUG = DEBUG;
-const TEST_ENABLED = true;
+const TEST_ENABLED = false;
 exports.TEST_ENABLED = TEST_ENABLED;
 const BOUNDING_BOX = false;
 exports.BOUNDING_BOX = BOUNDING_BOX;
@@ -2512,7 +2512,7 @@ class VR extends _emittable.default {
   }
 
   setVRNotFound() {
-    renderer.vr.setDevice(null);
+    this.renderer.vr.setDevice(null);
     const element = this.element;
     element.style.display = '';
     element.style.cursor = 'auto';

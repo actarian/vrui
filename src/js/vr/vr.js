@@ -158,7 +158,7 @@ export class VR extends Emittable {
 	}
 
 	setVRNotFound() {
-		renderer.vr.setDevice(null);
+		this.renderer.vr.setDevice(null);
 		const element = this.element;
 		element.style.display = '';
 		element.style.cursor = 'auto';
