@@ -37,6 +37,8 @@ class Vrui {
 		renderer.setClearColor(0xdfdcd5, 1);
 		renderer.setPixelRatio(window.devicePixelRatio);
 		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMap.enabled = true;
+		renderer.shadowMap.type = THREE.PCFShadowMap; // THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
 		renderer.vr.enabled = true;
 		container.appendChild(renderer.domElement);
 
@@ -58,9 +60,21 @@ class Vrui {
 		const camera = this.camera = this.addCamera();
 		scene.add(camera);
 
-		if (false) {
-			const light = new THREE.HemisphereLight(0xffffff, 0x330000, 1.2);
+		if (true) {
+			// const light = new THREE.HemisphereLight(0xffffff, 0x330000, 1.2);
+			const light = new THREE.DirectionalLight(0xffffff, 1, 100);
+			light.position.set(0, 3, 0);
+			light.castShadow = true;
 			scene.add(light);
+			light.shadow.mapSize.width = 1024;
+			light.shadow.mapSize.height = 1024;
+			light.shadow.radius = 1.25;
+			light.shadow.camera.near = 0.1;
+			light.shadow.camera.far = 100;
+			/*
+			const helper = new THREE.CameraHelper(light.shadow.camera);
+			scene.add(helper);
+			*/
 		}
 
 		const controllers = this.controllers = this.addControllers(renderer, vr, scene);
@@ -73,6 +87,7 @@ class Vrui {
 		// const physics = this.physics = new Physics();
 		const physics = this.physics = new PhysicsWorker();
 		const floor = this.floor = this.addFloor();
+		scene.add(floor);
 		/*
 		physics.on('init', () => {
 			console.log('init');
@@ -93,9 +108,18 @@ class Vrui {
 
 	addFloor() {
 		if (this.physics) {
+			const geometry = new THREE.PlaneGeometry(40, 40);
+			geometry.rotateX(deg(-90));
+			const material = new THREE.ShadowMaterial();
+			material.opacity = 0.5;
+			const floor = new THREE.Mesh(geometry, material);
+			floor.position.y = 0.0;
+			floor.receiveShadow = true;
+			/*
 			const floor = new THREE.Group();
-			floor.position.y = -0.5;
-			this.physics.addBox(floor, new THREE.Vector3(10, 1, 10));
+			floor.position.y = -0.1;
+			*/
+			this.physics.addBox(floor, new THREE.Vector3(40, cm(1), 40));
 			return floor;
 		}
 	}
@@ -386,6 +410,7 @@ class Vrui {
 		const size = new THREE.Vector3(cm(40), mm(10), cm(20));
 		const geometry = new RoundBoxGeometry(size.x, size.y, size.z, mm(5), 1, 1, 1, 5);
 		const mesh = new THREE.Mesh(geometry, this.materials.white);
+		mesh.receiveShadow = true;
 		mesh.position.set(0, cm(116), cm(-60));
 		if (this.physics) {
 			this.physics.addBox(mesh, size);
@@ -452,12 +477,14 @@ class Vrui {
 								// child.geometry.computeFaceNormals();
 								// child.geometry.computeVertexNormals(true);
 								child.material = this.materials.bodyPrimaryClear;
+								child.castShadow = true;
 								mesh.body = child;
 								break;
 							case 'body-secondary':
 								// child.geometry.computeFaceNormals();
 								// child.geometry.computeVertexNormals(true);
 								child.material = this.materials.bodySecondary;
+								child.castShadow = true;
 								mesh.color = child;
 								break;
 							case 'bristles-primary':
@@ -534,6 +561,9 @@ class Vrui {
 				ease: Power2.easeInOut
 			});
 			if (this.physics) {
+				if (TEST_ENABLED) {
+					this.linearVelocity.z -= 1;
+				}
 				this.physics.addBox(mesh, mesh.userData.size, 1, this.linearVelocity, this.angularVelocity);
 				/*
 				this.bodies.push(mesh);
@@ -563,7 +593,7 @@ class Vrui {
 			if (mesh.position.y < cm(30)) {
 				// const linearVelocity = mesh.userData.body.getLinearVelocity();
 				// if (linearVelocity.length() < 0.03) {
-				if (data && data.speed < 0.3) {
+				if (data && data.speed < 0.03) {
 					mesh.onRespawn();
 				}
 			}
@@ -708,6 +738,7 @@ class Vrui {
 			}, 1000);
 			// console.log('onRespawn');
 		};
+		/*
 		const onFallDown = () => {
 			if (mesh.falling) {
 				const speed = mesh.userData.speed || mm(0.1);
@@ -729,6 +760,7 @@ class Vrui {
 				}
 			}
 		};
+		*/
 		let box;
 		if (BOUNDING_BOX) {
 			box = new THREE.BoxHelper(mesh, 0x0000ff);
@@ -738,7 +770,7 @@ class Vrui {
 			if (box && !mesh.freezed) {
 				box.update();
 			}
-			onFallDown();
+			// onFallDown();
 		};
 		return mesh;
 	}

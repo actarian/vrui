@@ -23,7 +23,7 @@ export default class Materials {
 
 	getWhite() {
 		let material;
-		if (true) {
+		if (false) {
 			const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
 			material = new THREE.MeshMatcapMaterial({
 				color: 0xffffff,

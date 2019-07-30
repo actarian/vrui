@@ -723,7 +723,7 @@ class Materials {
   getWhite() {
     let material;
 
-    if (true) {
+    if (false) {
       const matcap = new THREE.TextureLoader().load('img/matcap/matcap-06.jpg');
       material = new THREE.MeshMatcapMaterial({
         color: 0xffffff,
@@ -2724,6 +2724,9 @@ class Vrui {
     renderer.setClearColor(0xdfdcd5, 1);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap; // THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
+
     renderer.vr.enabled = true;
     container.appendChild(renderer.domElement);
     const vr = this.vr = new _vr.VR(renderer, {
@@ -2741,9 +2744,21 @@ class Vrui {
     const camera = this.camera = this.addCamera();
     scene.add(camera);
 
-    if (false) {
-      const light = new THREE.HemisphereLight(0xffffff, 0x330000, 1.2);
+    if (true) {
+      // const light = new THREE.HemisphereLight(0xffffff, 0x330000, 1.2);
+      const light = new THREE.DirectionalLight(0xffffff, 1, 100);
+      light.position.set(0, 3, 0);
+      light.castShadow = true;
       scene.add(light);
+      light.shadow.mapSize.width = 1024;
+      light.shadow.mapSize.height = 1024;
+      light.shadow.radius = 1.25;
+      light.shadow.camera.near = 0.1;
+      light.shadow.camera.far = 100;
+      /*
+      const helper = new THREE.CameraHelper(light.shadow.camera);
+      scene.add(helper);
+      */
     }
 
     const controllers = this.controllers = this.addControllers(renderer, vr, scene);
@@ -2753,6 +2768,7 @@ class Vrui {
 
     const physics = this.physics = new _physics.default();
     const floor = this.floor = this.addFloor();
+    scene.add(floor);
     /*
     physics.on('init', () => {
     	console.log('init');
@@ -2774,9 +2790,19 @@ class Vrui {
 
   addFloor() {
     if (this.physics) {
+      const geometry = new THREE.PlaneGeometry(40, 40);
+      geometry.rotateX((0, _const.deg)(-90));
+      const material = new THREE.ShadowMaterial();
+      material.opacity = 0.5;
+      const floor = new THREE.Mesh(geometry, material);
+      floor.position.y = 0.0;
+      floor.receiveShadow = true;
+      /*
       const floor = new THREE.Group();
-      floor.position.y = -0.5;
-      this.physics.addBox(floor, new THREE.Vector3(10, 1, 10));
+      floor.position.y = -0.1;
+      */
+
+      this.physics.addBox(floor, new THREE.Vector3(40, (0, _const.cm)(1), 40));
       return floor;
     }
   }
@@ -3087,6 +3113,7 @@ class Vrui {
     const size = new THREE.Vector3((0, _const.cm)(40), (0, _const.mm)(10), (0, _const.cm)(20));
     const geometry = new _roundBox.default(size.x, size.y, size.z, (0, _const.mm)(5), 1, 1, 1, 5);
     const mesh = new THREE.Mesh(geometry, this.materials.white);
+    mesh.receiveShadow = true;
     mesh.position.set(0, (0, _const.cm)(116), (0, _const.cm)(-60));
 
     if (this.physics) {
@@ -3158,6 +3185,7 @@ class Vrui {
               // child.geometry.computeFaceNormals();
               // child.geometry.computeVertexNormals(true);
               child.material = this.materials.bodyPrimaryClear;
+              child.castShadow = true;
               mesh.body = child;
               break;
 
@@ -3165,6 +3193,7 @@ class Vrui {
               // child.geometry.computeFaceNormals();
               // child.geometry.computeVertexNormals(true);
               child.material = this.materials.bodySecondary;
+              child.castShadow = true;
               mesh.color = child;
               break;
 
@@ -3248,6 +3277,10 @@ class Vrui {
       });
 
       if (this.physics) {
+        if (_const.TEST_ENABLED) {
+          this.linearVelocity.z -= 1;
+        }
+
         this.physics.addBox(mesh, mesh.userData.size, 1, this.linearVelocity, this.angularVelocity);
         /*
         this.bodies.push(mesh);
@@ -3280,7 +3313,7 @@ class Vrui {
       if (mesh.position.y < (0, _const.cm)(30)) {
         // const linearVelocity = mesh.userData.body.getLinearVelocity();
         // if (linearVelocity.length() < 0.03) {
-        if (data && data.speed < 0.3) {
+        if (data && data.speed < 0.03) {
           mesh.onRespawn();
         }
       }
@@ -3425,29 +3458,30 @@ class Vrui {
         this.scene.add(mesh); // console.log('onRespawn.scened');
       }, 1000); // console.log('onRespawn');
     };
-
+    /*
     const onFallDown = () => {
-      if (mesh.falling) {
-        const speed = mesh.userData.speed || (0, _const.mm)(0.1);
-        let tx = mesh.position.x;
-        let ty = mesh.position.y;
-        let tz = mesh.position.z;
-        let rx = mesh.rotation.x;
-        let ry = mesh.rotation.y;
-        let rz = mesh.rotation.z;
-        ty -= speed;
-        rx += (0 - rx) / 1000 * speed;
-        ry += (0 - ry) / 1000 * speed;
-        rz += (0, _const.deg)(0.05) * speed;
-        mesh.position.set(tx, ty, tz);
-        mesh.rotation.set(rx, ry, rz);
-        mesh.userData.speed = speed * 1.1;
-
-        if (ty < (0, _const.cm)(-30)) {
-          onRespawn();
-        }
-      }
+    	if (mesh.falling) {
+    		const speed = mesh.userData.speed || mm(0.1);
+    		let tx = mesh.position.x;
+    		let ty = mesh.position.y;
+    		let tz = mesh.position.z;
+    		let rx = mesh.rotation.x;
+    		let ry = mesh.rotation.y;
+    		let rz = mesh.rotation.z;
+    		ty -= speed;
+    		rx += (0 - rx) / 1000 * speed;
+    		ry += (0 - ry) / 1000 * speed;
+    		rz += deg(0.05) * speed;
+    		mesh.position.set(tx, ty, tz);
+    		mesh.rotation.set(rx, ry, rz);
+    		mesh.userData.speed = speed * 1.1;
+    		if (ty < cm(-30)) {
+    			onRespawn();
+    		}
+    	}
     };
+    */
+
 
     let box;
 
@@ -3459,9 +3493,8 @@ class Vrui {
     mesh.onUpdate = (renderer, scene, camera, object, delta, time, tick) => {
       if (box && !mesh.freezed) {
         box.update();
-      }
+      } // onFallDown();
 
-      onFallDown();
     };
 
     return mesh;
