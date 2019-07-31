@@ -32,6 +32,7 @@ export default class Materials {
 		} else {
 			material = new THREE.MeshStandardMaterial({
 				color: 0xffffff,
+				emissive: 0x333333,
 				roughness: 0.2,
 				metalness: 0.2,
 			});
