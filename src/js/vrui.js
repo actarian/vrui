@@ -26,7 +26,6 @@ class Vrui {
 		this.angularVelocity = new THREE.Vector3();
 		// this.size = { width: 0, height: 0, aspect: 0 };
 		// this.cameraDirection = new THREE.Vector3();
-		//
 		const section = this.section = document.querySelector('.vrui');
 		const container = this.container = section.querySelector('.vrui__container');
 		const debugInfo = this.debugInfo = section.querySelector('.debug__info');
@@ -39,18 +38,7 @@ class Vrui {
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		renderer.shadowMap.enabled = true;
 		renderer.shadowMap.type = THREE.PCFShadowMap; // THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
-		renderer.vr.enabled = true;
 		container.appendChild(renderer.domElement);
-
-		const vr = this.vr = new VR(renderer, {
-			referenceSpaceType: 'local'
-		});
-		vr.on('error', (error) => {
-			this.debugInfo.innerHTML = error;
-		});
-		container.appendChild(vr.element);
-
-		const raycaster = this.raycaster = new THREE.Raycaster();
 
 		const scene = this.scene = new THREE.Scene();
 		scene.name = 'Scene';
@@ -59,6 +47,16 @@ class Vrui {
 
 		const camera = this.camera = this.addCamera();
 		scene.add(camera);
+
+		const vr = this.vr = new VR(renderer, {
+			referenceSpaceType: 'local'
+		}, camera);
+		vr.on('error', (error) => {
+			this.debugInfo.innerHTML = error;
+		});
+		container.appendChild(vr.element);
+
+		const raycaster = this.raycaster = new THREE.Raycaster();
 
 		if (true) {
 			// const light = new THREE.HemisphereLight(0xffffff, 0x330000, 1.2);
