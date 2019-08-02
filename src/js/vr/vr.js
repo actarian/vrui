@@ -254,6 +254,7 @@ export class VR extends Emittable {
 
 	onVRDisplayActivate(event) {
 		try {
+			this.emit('beforepresenting');
 			event.display.requestPresent([{
 				source: this.renderer.domElement
 			}]).then(() => {
@@ -279,9 +280,11 @@ export class VR extends Emittable {
 		try {
 			const device = this.device;
 			if (device.isPresenting) {
+				this.emit('beforeexiting');
 				device.exitPresent();
 				this.enabled = false;
 			} else {
+				this.emit('beforepresenting');
 				this.enabled = true;
 				device.requestPresent([{
 					source: this.renderer.domElement
@@ -301,6 +304,7 @@ export class VR extends Emittable {
 		try {
 			const device = this.device;
 			if (this.session === null) {
+				this.emit('beforepresenting');
 				this.enabled = true;
 				device.requestSession({
 					immersive: true,
@@ -312,6 +316,7 @@ export class VR extends Emittable {
 				}
 				*/
 			} else {
+				this.emit('beforeexiting');
 				this.session.end();
 				this.enabled = false;
 			}
